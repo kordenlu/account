@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<redis>
+	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="client_req_queue" channel_mode="subscribe"/>
+	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="client_resp_queue"/>
+</redis>
+
