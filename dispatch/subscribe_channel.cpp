@@ -16,12 +16,7 @@
 using namespace FRAME;
 using namespace LOGGER;
 
-int32_t CSubscribeChannel::GetSize()
-{
-	return sizeof(*this);
-}
-
-int32_t CSubscribeChannel::OnRedisReply(int32_t nResult, void *pReply, CBaseObject *pParam)
+int32_t CSubscribeChannel::OnRedisReply(int32_t nResult, void *pReply, void *pSession)
 {
 	redisReply *pRedisReply = (redisReply *)pReply;
 	if(nResult != 0)

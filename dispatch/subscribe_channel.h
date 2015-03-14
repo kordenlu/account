@@ -8,16 +8,26 @@
 #ifndef SUBSCRIBE_CHANNEL_H_
 #define SUBSCRIBE_CHANNEL_H_
 
-#include "../../frame/frame_impl.h"
+#include "../../common/common_typedef.h"
+#include "../../common/common_object.h"
 
-using namespace FRAME;
-
-class CSubscribeChannel : public IRedisReplyHandler
+class CSubscribeChannel : public CBaseObject
 {
 public:
-	virtual int32_t GetSize();
+	virtual int32_t Init()
+	{
+		return 0;
+	}
+	virtual int32_t Uninit()
+	{
+		return 0;
+	}
+	virtual int32_t GetSize()
+	{
+		return sizeof(*this);
+	}
 
-	virtual int32_t OnRedisReply(int32_t nResult, void *pReply, CBaseObject *pParam);
+	virtual int32_t OnRedisReply(int32_t nResult, void *pReply, void *pSession);
 };
 
 
