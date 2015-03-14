@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<server>
+	<msg msgid="2">
+		<error result="1" string="手机号验证次数过多，请明日重新验证"/>
+		<error result="2" string="该手机号已注册"/>
+		<error result="3" string="ip地址验证次数过多，请明日重新验证"/>
+		<error result="255" string="服务器发生未知错误"/>
+	</msg>
+</server>
+
