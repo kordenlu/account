@@ -32,7 +32,8 @@ int32_t CRedisBank::Init()
 
 		if(arrRedisServerInfo[i].arrChannelMode == string("subscribe"))
 		{
-			pRedisChannel->AttachReplyHandler(new CSubscribeChannel());
+			RedisSession *pSession = new RedisSession(new CSubscribeChannel(), static_cast<HandleRedisReply>(&CSubscribeChannel::OnRedisReply));
+			pRedisChannel->AttachSession(pSession);
 		}
 		pRedisChannel->Connect();
 
@@ -80,10 +81,10 @@ CRedisChannel *CRedisBank::GetRedisChannel(uint32_t key)
 }
 
 //根据cache key获取redis对象
-CRedisChannel *CRedisBank::GetRedisChannel(const char *szKey)
+CRedisChannel *CRedisBank::GetRedisChannel(string strKey)
 {
 	CRedisChannel *pRedisChannel = NULL;
-	map<string, CRedisChannel *>::iterator it = m_stRedisServerMap.find(string(szKey));
+	map<string, CRedisChannel *>::iterator it = m_stRedisServerMap.find(strKey);
 	if(it != m_stRedisServerMap.end())
 	{
 		pRedisChannel = it->second;

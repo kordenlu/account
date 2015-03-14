@@ -35,7 +35,7 @@ public:
 	//获取一个redis对象，目前采取对目标uin hash到方案
 	CRedisChannel *GetRedisChannel(uint32_t key);
 	//根据cache key获取redis对象
-	CRedisChannel *GetRedisChannel(const char *szKey);
+	CRedisChannel *GetRedisChannel(string strKey);
 protected:
 	RedisServerMap		m_stRedisServerMap;
 	int32_t				m_nHashTableSize;
