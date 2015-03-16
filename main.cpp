@@ -7,6 +7,8 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
+#include <stdlib.h>
 #include "../netevent/net_namespace.h"
 #include "../netevent/net_impl.h"
 #include "../netevent/net_typedef.h"
@@ -53,6 +55,8 @@ int32_t InitNetAndTimer(CNetHandler *pNetHandler)
 
 int32_t main()
 {
+	srand((int)time(0));
+
 	//启动日志线程
 	CLogger::Start();
 
