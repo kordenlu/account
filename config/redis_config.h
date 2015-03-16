@@ -10,7 +10,7 @@
 
 #include "../../frame/frame_impl.h"
 #include "../../frame/frame.h"
-#include "../../frame/redis_agent.h"
+#include "../../include/typedef.h"
 #include "../server_typedef.h"
 #include <string.h>
 

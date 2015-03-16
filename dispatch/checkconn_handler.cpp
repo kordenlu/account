@@ -10,9 +10,11 @@
 #include "../server_typedef.h"
 #include "../../frame/frame.h"
 #include "../../logger/logger.h"
+
+using namespace FRAME;
 using namespace LOGGER;
 
-int32_t CCheckConnHandler::CheckConnStatus(CTimer *pTimer)
+int32_t CCheckConnHandler::CheckConnStatus(void *pTimerData)
 {
 	WRITE_INFO_LOG(SERVER_NAME, "check connection status!\n");
 

@@ -7,9 +7,10 @@
 
 #include "redis_bank.h"
 #include "../../frame/frame.h"
-#include "../server_typedef.h"
-#include "../config/redis_config.h"
 #include "../../frame/redis_channel.h"
+#include "../../frame/redissession_bank.h"
+#include "../config/redis_config.h"
+#include "../server_typedef.h"
 #include "../dispatch/subscribe_channel.h"
 
 using namespace FRAME;
@@ -32,7 +33,9 @@ int32_t CRedisBank::Init()
 
 		if(arrRedisServerInfo[i].arrChannelMode == string("subscribe"))
 		{
-			RedisSession *pSession = new RedisSession(new CSubscribeChannel(), static_cast<HandleRedisReply>(&CSubscribeChannel::OnRedisReply));
+			CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
+			RedisSession *pSession = pRedisSessionBank->CreateSession(new CSubscribeChannel(), static_cast<RedisReply>(&CSubscribeChannel::OnRedisReply),
+					NULL);
 			pRedisChannel->AttachSession(pSession);
 		}
 		pRedisChannel->Connect();

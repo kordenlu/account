@@ -9,9 +9,6 @@
 #define CHECKCONN_HANDLER_H_
 
 #include "../../common/common_object.h"
-#include "../../frame/frame_timer.h"
-
-using namespace FRAME;
 
 class CCheckConnHandler : public CBaseObject
 {
@@ -36,7 +33,7 @@ public:
 		return sizeof(*this);
 	}
 
-	int32_t CheckConnStatus(CTimer *pTimer);
+	int32_t CheckConnStatus(void *pTimerData);
 };
 
 
