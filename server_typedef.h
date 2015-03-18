@@ -10,12 +10,13 @@
 
 #include "../common/common_typedef.h"
 
-#define SERVER_NAME			"accout"
+#define SERVER_NAME			"account"
 
 #define CONFIG_SERVER		"./server_config.xml"
 #define CONFIG_REDIS		"./redis_config.xml"
 #define CONFIG_MSGDISPATCH	"./msgdispatch_config.xml"
 #define CONFIG_STRING		"./string_config.xml"
+#define CONFIG_REGIST		"./regist_config.xml"
 
 #define BANK_REDIS			"redis_bank"
 
