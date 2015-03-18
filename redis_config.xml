@@ -6,6 +6,6 @@
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="regist_addr_info_"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="gobal_uin"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="user_base_info_"/>
-	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="account_name_"/>
+	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="account_info_"/>
 </redis>
 

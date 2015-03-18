@@ -3,5 +3,6 @@
 	<param msgid="2" channel_key="client_account_resp"/>
 	<param msgid="5" channel_key="client_account_resp"/>
 	<param msgid="8" channel_key="client_account_resp"/>
+	<param msgid="11" channel_key="client_account_resp"/>
 </msg>
 
