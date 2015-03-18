@@ -21,6 +21,7 @@ int32_t CSubscribeChannel::OnRedisReply(int32_t nResult, void *pReply, void *pSe
 	redisReply *pRedisReply = (redisReply *)pReply;
 	if(nResult != 0)
 	{
+		WRITE_WARN_LOG(SERVER_NAME, "recv redis reply error!{%s}\n", pRedisReply->str);
 		return 0;
 	}
 
@@ -31,6 +32,11 @@ int32_t CSubscribeChannel::OnRedisReply(int32_t nResult, void *pReply, void *pSe
 		{
 			uint8_t *pBuf = (uint8_t *)pReplyElement->str;
 			int32_t nBufSize = pReplyElement->len;
+			if(nBufSize <= 0)
+			{
+				WRITE_WARN_LOG(SERVER_NAME, "bufsize is wrong!\n");
+				return 0;
+			}
 
 			uint32_t nOffset = sizeof(uint16_t);
 			uint8_t nControlHeadSize = 0;
