@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<server>
+	<regist phone_regist_count="10" address_regist_count="100"/>
+	<auth auth_code_live_time="600" message="【奇巴科技】您到奇巴短信验证码是%d，仅用于帐号注册，请勿将验证码提供给他人"/>
+</server>
