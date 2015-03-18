@@ -53,15 +53,11 @@ public:
 
 	int32_t OnSessionAccountIsExist(int32_t nResult, void *pReply, void *pSession);
 
-	int32_t OnTimeoutAccountIsExist(void *pTimerData);
-
 	int32_t OnSessionGetRegistPhoneInfo(int32_t nResult, void *pReply, void *pSession);
-
-	int32_t OnTimeoutGetRegistPhoneInfo(void *pTimerData);
 
 	int32_t OnSessionGetRegistAddrInfo(int32_t nResult, void *pReply, void *pSession);
 
-	int32_t OnTimeoutGetRegistAddrInfo(void *pTimerData);
+	int32_t OnRedisSessionTimeout(void *pTimerData);
 };
 
 

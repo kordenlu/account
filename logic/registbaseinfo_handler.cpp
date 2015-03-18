@@ -11,6 +11,7 @@
 #include "../../frame/frame.h"
 #include "../../frame/server_helper.h"
 #include "../../frame/redissession_bank.h"
+#include "../../logger/logger.h"
 #include "../../include/cachekey_define.h"
 #include "../../include/control_head.h"
 #include "../../include/typedef.h"
@@ -19,6 +20,7 @@
 #include "../server_typedef.h"
 #include "../bank/redis_bank.h"
 
+using namespace LOGGER;
 using namespace FRAME;
 
 int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMsgHead, IMsgBody *pMsgBody, uint8_t *pBuf, int32_t nBufSize)
@@ -45,11 +47,14 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 	int32_t nBornYear = atoi(pRegistBaseInfoReq->m_strBirthday.c_str());
 	int32_t nAge = nCurYear - nBornYear;
 
+	UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASE_INFO);
+
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(RK_USER_BASE_INFO);
-	pUserBaseInfoChannel->HMSet(NULL, itoa(pMsgHeadCS->m_nSrcUin), "%s %s %s %s %s %s %s %d %s %d", "nickname", pRegistBaseInfoReq->m_strNickName.c_str(),
-			"headimage", pRegistBaseInfoReq->m_strHeadImageAddr.c_str(), "birthday", pRegistBaseInfoReq->m_strBirthday.c_str(),
-			"age", nAge, "sex", pRegistBaseInfoReq->m_nSex);
+	CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
+	pUserBaseInfoChannel->HMSet(NULL, itoa(pMsgHeadCS->m_nSrcUin), "%s %s %s %s %s %s %s %d %s %d", pConfigUserBaseInfo->nickname,
+			pRegistBaseInfoReq->m_strNickName.c_str(), pConfigUserBaseInfo->headimage, pRegistBaseInfoReq->m_strHeadImageAddr.c_str(),
+			pConfigUserBaseInfo->brithday, pRegistBaseInfoReq->m_strBirthday.c_str(), pConfigUserBaseInfo->age, nAge, pConfigUserBaseInfo->gender,
+			pRegistBaseInfoReq->m_nGender);
 
 	uint8_t arrRespBuf[MAX_MSG_SIZE];
 
@@ -67,6 +72,7 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 	uint16_t nTotalSize = CServerHelper::MakeMsg(pCtlHead, &stMsgHeadCS, &stRegistBaseInfoResp, arrRespBuf, sizeof(arrRespBuf));
 	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
 
+	g_Frame.Dump(pCtlHead, &stMsgHeadCS, &stRegistBaseInfoResp, "send ");
 	return 0;
 }
 

@@ -11,14 +11,17 @@
 #include "../../frame/frame.h"
 #include "../../frame/server_helper.h"
 #include "../../frame/redissession_bank.h"
+#include "../../logger/logger.h"
 #include "../../include/cachekey_define.h"
 #include "../../include/control_head.h"
 #include "../../include/typedef.h"
 #include "../config/msgdispatch_config.h"
 #include "../config/string_config.h"
+#include "../config/regist_config.h"
 #include "../server_typedef.h"
 #include "../bank/redis_bank.h"
 
+using namespace LOGGER;
 using namespace FRAME;
 
 int32_t CRequstAuthHandler::GetAuthCodeByPhone(ICtlHead *pCtlHead, IMsgHead *pMsgHead, IMsgBody *pMsgBody, uint8_t *pBuf, int32_t nBufSize)
@@ -43,15 +46,17 @@ int32_t CRequstAuthHandler::GetAuthCodeByPhone(ICtlHead *pCtlHead, IMsgHead *pMs
 
 	CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
 	RedisSession *pSession = pRedisSessionBank->CreateSession(this, static_cast<RedisReply>(&CRequstAuthHandler::OnSessionAccountIsExist),
-			static_cast<TimerProc>(&CRequstAuthHandler::OnTimeoutAccountIsExist));
+			static_cast<TimerProc>(&CRequstAuthHandler::OnRedisSessionTimeout));
 	UserSession *pSessionData = new(pSession->GetSessionData()) UserSession();
 	pSessionData->m_stCtlHead = *pControlHead;
 	pSessionData->m_stMsgHeadCS = *pMsgHeadCS;
 	pSessionData->m_stAuthRegistPhoneReq = *pAuthRegistPhoneReq;
 
+	AccountInfo *pConfigAccountInfo = (AccountInfo *)g_Frame.GetConfig(ACCOUNT_INFO);
+
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pAccountNameChannel = pRedisBank->GetRedisChannel(RK_ACCOUNT_NAME);
-	pAccountNameChannel->HExists(pSession, (char *)(pAuthRegistPhoneReq->m_strPhone.c_str()), "%s", "uin");
+	CRedisChannel *pAccountNameChannel = pRedisBank->GetRedisChannel(pConfigAccountInfo->string);
+	pAccountNameChannel->HExists(pSession, (char *)(pAuthRegistPhoneReq->m_strPhone.c_str()), "%s", pConfigAccountInfo->uin);
 
 	return 0;
 }
@@ -70,17 +75,13 @@ int32_t CRequstAuthHandler::OnSessionAccountIsExist(int32_t nResult, void *pRepl
 	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
 	if(pRespChannel == NULL)
 	{
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
 	}
 
 	uint8_t arrRespBuf[MAX_MSG_SIZE];
-
-	MsgHeadCS stMsgHeadCS;
-	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
-	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
-	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
-	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
 
 	CRequestAuthResp stAuthRegistPhoneResp;
 	stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_OK;
@@ -108,57 +109,33 @@ int32_t CRequstAuthHandler::OnSessionAccountIsExist(int32_t nResult, void *pRepl
 
 	if(bIsReturn)
 	{
+		MsgHeadCS stMsgHeadCS;
+		stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
+		stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
+		stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
+		stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
+
 		stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
 		pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+
+		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
+
+		pRedisSessionBank->DestroySession(pRedisSession);
 	}
 	else
 	{
 		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CRequstAuthHandler::OnSessionGetRegistPhoneInfo));
-		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CRequstAuthHandler::OnTimeoutGetRegistPhoneInfo), 60 * MS_PER_SECOND);
+		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CRequstAuthHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 
-		CRedisChannel *pGetRegistPhoneInfoChannel = pRedisBank->GetRedisChannel(RK_REGIST_PHONE_INFO);
+		RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONE_INFO);
+
+		CRedisChannel *pGetRegistPhoneInfoChannel = pRedisBank->GetRedisChannel(pConfigRegistPhoneInfo->string);
 		pGetRegistPhoneInfoChannel->HMGet(pRedisSession, (char *)(pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()), "%s %s %s %s",
-				"regist_count", "last_regist_date", "auth_code", "auth_code_expire_time");
+				pConfigRegistPhoneInfo->regist_count, pConfigRegistPhoneInfo->last_regist_date, pConfigRegistPhoneInfo->auth_code,
+				pConfigRegistPhoneInfo->auth_code_expire_time);
 	}
-	return 0;
-}
-
-int32_t CRequstAuthHandler::OnTimeoutAccountIsExist(void *pTimerData)
-{
-	CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
-	RedisSession *pRedisSession = (RedisSession *)pTimerData;
-
-	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
-	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
-	if(pRespChannel == NULL)
-	{
-		pRedisSessionBank->DestroySession(pRedisSession);
-		return 0;
-	}
-
-	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
-
-	CStringConfig *pStringConfig = (CStringConfig *)g_Frame.GetConfig(CONFIG_STRING);
-
-	uint8_t arrRespBuf[MAX_MSG_SIZE];
-
-	MsgHeadCS stMsgHeadCS;
-	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
-	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
-	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
-	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
-
-	CRequestAuthResp stAuthRegistPhoneResp;
-	stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_Unknown;
-	stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
-
-	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
-
-	pRedisSessionBank->DestroySession(pRedisSession);
 	return 0;
 }
 
@@ -176,17 +153,15 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
 	if(pRespChannel == NULL)
 	{
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
 	}
 
-	uint8_t arrRespBuf[MAX_MSG_SIZE];
+	CRegistConfig *pRegistConfig = (CRegistConfig *)g_Frame.GetConfig(CONFIG_REGIST);
 
-	MsgHeadCS stMsgHeadCS;
-	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
-	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
-	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
-	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
+	uint8_t arrRespBuf[MAX_MSG_SIZE];
 
 	CRequestAuthResp stAuthRegistPhoneResp;
 	stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_OK;
@@ -236,7 +211,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 		int32_t nCurDate = CDateTime::CurrentDateTime().Date();
 		if(nCurDate == nLastRegistDate)
 		{
-			if(nRegistCount > 10)
+			if(nRegistCount > pRegistConfig->GetPhoneRegistCount())
 			{
 				stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_PhoneAuthLimit;
 				bIsReturn = true;
@@ -244,15 +219,19 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 			}
 		}
 
-		CRedisChannel *pPhoneInfo = pRedisBank->GetRedisChannel(RK_REGIST_PHONE_INFO);
+		RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONE_INFO);
+
+		CRedisChannel *pPhoneInfo = pRedisBank->GetRedisChannel(pConfigRegistPhoneInfo->string);
 		if(nCurDate == nLastRegistDate)
 		{
-			pPhoneInfo->HIncrBy(NULL, (char *)(pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()), "%s %d", "regist_count", 1);
+			pPhoneInfo->HIncrBy(NULL, (char *)(pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()), "%s %d",
+					pConfigRegistPhoneInfo->regist_count, 1);
 		}
 		else
 		{
 			pPhoneInfo->HMSet(NULL, (char *)(pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()), "%s %d %s %d %s %d",
-					"regist_count", 1, "last_regist_date", nCurDate, "auth_code_expire_time", 0);
+					pConfigRegistPhoneInfo->regist_count, 1, pConfigRegistPhoneInfo->last_regist_date, nCurDate,
+					pConfigRegistPhoneInfo->auth_code_expire_time, 0);
 		}
 
 		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
@@ -264,67 +243,43 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 				nAuthCode += 100000;
 			}
 
-			nAuthCodeExpireTime = nCurTime + 600;
+			nAuthCodeExpireTime = nCurTime + pRegistConfig->GetAuthCodeLiveTime();
 			pPhoneInfo->HMSet(NULL, (char *)(pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()), "%s %d %s %d",
-					"auth_code", nAuthCode, "auth_code_expire_time", nAuthCodeExpireTime);
+					pConfigRegistPhoneInfo->auth_code, nAuthCode, pConfigRegistPhoneInfo->auth_code_expire_time, nAuthCodeExpireTime);
 		}
 	}while(0);
 
 	if(bIsReturn)
 	{
+		MsgHeadCS stMsgHeadCS;
+		stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
+		stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
+		stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
+		stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
+
 		stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
 		pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+
+		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
+
+		pRedisSessionBank->DestroySession(pRedisSession);
 	}
 	else
 	{
 		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CRequstAuthHandler::OnSessionGetRegistAddrInfo));
-		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CRequstAuthHandler::OnTimeoutGetRegistAddrInfo), 60 * MS_PER_SECOND);
+		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CRequstAuthHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 		pUserSession->m_nAuthCode = nAuthCode;
 		pUserSession->m_nAuthCodeExpireTime = nAuthCodeExpireTime;
 
-		CRedisChannel *pAddrInfoChannel = pRedisBank->GetRedisChannel(RK_REGIST_ADDR_INFO);
-		pAddrInfoChannel->HMGet(pRedisSession, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %s", "regist_count", "last_regist_date");
+		RegistAddrInfo *pConfigRegistAddrInfo = (RegistAddrInfo *)g_Frame.GetConfig(REGIST_ADDR_INFO);
+
+		CRedisChannel *pAddrInfoChannel = pRedisBank->GetRedisChannel(pConfigRegistAddrInfo->string);
+		pAddrInfoChannel->HMGet(pRedisSession, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %s",
+				pConfigRegistAddrInfo->regist_count, pConfigRegistAddrInfo->last_regist_date);
 	}
 
-	return 0;
-}
-
-int32_t CRequstAuthHandler::OnTimeoutGetRegistPhoneInfo(void *pTimerData)
-{
-	CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
-	RedisSession *pRedisSession = (RedisSession *)pTimerData;
-
-	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
-	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
-	if(pRespChannel == NULL)
-	{
-		pRedisSessionBank->DestroySession(pRedisSession);
-		return 0;
-	}
-
-	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
-
-	CStringConfig *pStringConfig = (CStringConfig *)g_Frame.GetConfig(CONFIG_STRING);
-
-	uint8_t arrRespBuf[MAX_MSG_SIZE];
-
-	MsgHeadCS stMsgHeadCS;
-	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
-	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
-	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
-	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
-
-	CRequestAuthResp stAuthRegistPhoneResp;
-	stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_Unknown;
-	stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
-
-	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
-
-	pRedisSessionBank->DestroySession(pRedisSession);
 	return 0;
 }
 
@@ -342,17 +297,15 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
 	if(pRespChannel == NULL)
 	{
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
 	}
 
-	uint8_t arrRespBuf[MAX_MSG_SIZE];
+	CRegistConfig *pRegistConfig = (CRegistConfig *)g_Frame.GetConfig(CONFIG_REGIST);
 
-	MsgHeadCS stMsgHeadCS;
-	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
-	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
-	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
-	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
+	uint8_t arrRespBuf[MAX_MSG_SIZE];
 
 	CRequestAuthResp stAuthRegistPhoneResp;
 	stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_OK;
@@ -387,7 +340,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 		int32_t nCurDate = CDateTime::CurrentDateTime().Date();
 		if(nCurDate == nLastRegistDate)
 		{
-			if(nRegistCount > 1000)
+			if(nRegistCount > pRegistConfig->GetAddrRegistCount())
 			{
 				stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_AddrAuthLimit;
 				bIsReturn = true;
@@ -395,48 +348,56 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 			}
 		}
 
-		CRedisChannel *pAddrInfo = pRedisBank->GetRedisChannel(RK_REGIST_ADDR_INFO);
+		RegistAddrInfo *pConfigRegistAddrInfo = (RegistAddrInfo *)g_Frame.GetConfig(REGIST_ADDR_INFO);
+
+		CRedisChannel *pAddrInfo = pRedisBank->GetRedisChannel(pConfigRegistAddrInfo->string);
 		if(nCurDate == nLastRegistDate)
 		{
-			pAddrInfo->HIncrBy(NULL, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %d", "regist_count", 1);
+			pAddrInfo->HIncrBy(NULL, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %d", pConfigRegistAddrInfo->regist_count, 1);
 		}
 		else
 		{
-			pAddrInfo->HMSet(NULL, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %d %s %d", "regist_count", 1, "last_regist_date", nCurDate);
+			pAddrInfo->HMSet(NULL, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %d %s %d",
+					pConfigRegistAddrInfo->regist_count, 1, pConfigRegistAddrInfo->last_regist_date, nCurDate);
 		}
 	}while(0);
+
+	MsgHeadCS stMsgHeadCS;
+	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
+	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
+	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
+	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
 
 	if(bIsReturn)
 	{
 		stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
 	}
-//	else
-//	{
-//		CRedisChannel *pAddrInfo = pRedisBank->GetRedisChannel(RK_REGIST_PHONE_INFO);
-//	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
 	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+
+	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
 
 	pRedisSessionBank->DestroySession(pRedisSession);
 	return 0;
 }
 
-int32_t CRequstAuthHandler::OnTimeoutGetRegistAddrInfo(void *pTimerData)
+int32_t CRequstAuthHandler::OnRedisSessionTimeout(void *pTimerData)
 {
 	CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
 	RedisSession *pRedisSession = (RedisSession *)pTimerData;
+	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
 
 	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
 	if(pRespChannel == NULL)
 	{
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
 	}
-
-	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
 
 	CStringConfig *pStringConfig = (CStringConfig *)g_Frame.GetConfig(CONFIG_STRING);
 
@@ -455,9 +416,9 @@ int32_t CRequstAuthHandler::OnTimeoutGetRegistAddrInfo(void *pTimerData)
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
 	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
 
-	pRedisSessionBank->DestroySession(pRedisSession);
+	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
 
+	pRedisSessionBank->DestroySession(pRedisSession);
 	return 0;
 }
-
 
