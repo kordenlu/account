@@ -18,6 +18,7 @@
 #include "../netevent/net_connector.h"
 #include "../logger/logger.h"
 #include "../frame/frame.h"
+#include "../include/cachekey_define.h"
 #include "regist_message.h"
 #include "dispatch/msgparser_factory.h"
 #include "dispatch/msg_handler.h"
@@ -29,6 +30,13 @@
 using namespace LOGGER;
 using namespace NETEVENT;
 using namespace FRAME;
+
+//注册到配置管理器
+REGIST_CONFIG(REGIST_PHONE_INFO, RegistPhoneInfo)
+REGIST_CONFIG(REGIST_ADDR_INFO, RegistAddrInfo)
+REGIST_CONFIG(GLOBAL_UIN, GlobalUin)
+REGIST_CONFIG(USER_BASE_INFO, UserBaseInfo)
+REGIST_CONFIG(ACCOUNT_INFO, AccountInfo)
 
 int32_t InitNetAndTimer(CNetHandler *pNetHandler)
 {
