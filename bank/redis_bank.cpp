@@ -28,15 +28,22 @@ int32_t CRedisBank::Init()
 
 	for(int32_t i = 0; i < nRedisCount; ++i)
 	{
-		CRedisChannel *pRedisChannel = new CRedisChannel(arrRedisServerInfo[i].nServerID, arrRedisServerInfo[i].arrServerAddress,
-				arrRedisServerInfo[i].nPort, arrRedisServerInfo[i].arrChannelKey, arrRedisServerInfo[i].arrChannelMode);
+		CRedisChannel *pRedisChannel = NULL;
 
 		if(arrRedisServerInfo[i].arrChannelMode == string("subscribe"))
 		{
-			CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
-			RedisSession *pSession = pRedisSessionBank->CreateSession(new CSubscribeChannel(), static_cast<RedisReply>(&CSubscribeChannel::OnRedisReply),
-					NULL);
-			pRedisChannel->AttachSession(pSession);
+//			CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
+//			RedisSession *pSession = pRedisSessionBank->CreateSession(new CSubscribeChannel(), static_cast<RedisReply>(&CSubscribeChannel::OnRedisReply),
+//					NULL);
+//			pRedisChannel->AttachSession(pSession);
+			pRedisChannel = new CSubscribeChannel(arrRedisServerInfo[i].nServerID, arrRedisServerInfo[i].arrServerAddress,
+					arrRedisServerInfo[i].nPort, arrRedisServerInfo[i].arrChannelKey);
+			g_Frame.AddRunner((CSubscribeChannel *)pRedisChannel);
+		}
+		else
+		{
+			pRedisChannel = new CRedisChannel(arrRedisServerInfo[i].nServerID, arrRedisServerInfo[i].arrServerAddress,
+					arrRedisServerInfo[i].nPort, arrRedisServerInfo[i].arrChannelKey);
 		}
 		pRedisChannel->Connect();
 
