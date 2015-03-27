@@ -9,11 +9,18 @@
 #define SUBSCRIBE_CHANNEL_H_
 
 #include "../../common/common_typedef.h"
-#include "../../common/common_object.h"
+#include "../../common/common_runnable.h"
+#include "../../frame/redis_channel.h"
 
-class CSubscribeChannel : public CBaseObject
+class CSubscribeChannel : public CRedisChannel, public IRunnable
 {
 public:
+	CSubscribeChannel(int32_t nServerID, char *pAddress, uint16_t nPort, char *pChannelKey):
+		CRedisChannel(nServerID, pAddress, nPort, pChannelKey)
+	{
+		m_pSubscribeSession = NULL;
+	}
+
 	virtual int32_t Init()
 	{
 		return 0;
@@ -27,7 +34,16 @@ public:
 		return sizeof(*this);
 	}
 
+	virtual int32_t OnConnected();
+
+	virtual void OnClosed();
+
+	virtual int32_t Run();
+
 	virtual int32_t OnRedisReply(int32_t nResult, void *pReply, void *pSession);
+
+protected:
+	RedisSession 		*m_pSubscribeSession;
 };
 
 
