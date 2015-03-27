@@ -118,7 +118,7 @@ int32_t CRequstAuthHandler::OnSessionAccountIsExist(int32_t nResult, void *pRepl
 		stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
-		pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+		pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
 
@@ -260,7 +260,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 		stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
-		pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+		pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
 
@@ -374,7 +374,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
 
@@ -414,7 +414,7 @@ int32_t CRequstAuthHandler::OnRedisSessionTimeout(void *pTimerData)
 	stAuthRegistPhoneResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stAuthRegistPhoneResp.m_nResult);
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stAuthRegistPhoneResp, "send ");
 
