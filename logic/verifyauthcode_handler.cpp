@@ -72,10 +72,10 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 
 	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_VERIFYAUTHCODE_RESP));
 	if(pRespChannel == NULL)
 	{
-		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_VERIFYAUTHCODE_RESP,
 				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
@@ -141,7 +141,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 		stVerifyAuthCodeResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stVerifyAuthCodeResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
-		pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+		pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, "send ");
 
@@ -172,10 +172,10 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pRep
 
 	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_VERIFYAUTHCODE_RESP));
 	if(pRespChannel == NULL)
 	{
-		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_VERIFYAUTHCODE_RESP,
 				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
@@ -201,6 +201,8 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pRep
 			stVerifyAuthCodeResp.m_nUin = pRedisReply->integer;
 			pUserSession->m_stMsgHeadCS.m_nSrcUin = pRedisReply->integer;
 		}
+
+		stVerifyAuthCodeResp.m_strAccountID = "787878";
 	}while(0);
 
 	MsgHeadCS stMsgHeadCS;
@@ -227,13 +229,14 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pRep
 		AccountInfo *pConfigAccountInfo = (AccountInfo *)g_Frame.GetConfig(ACCOUNT_INFO);
 
 		CRedisChannel *pAccountNameChannel = pRedisBank->GetRedisChannel(pConfigAccountInfo->string);
-		pAccountNameChannel->HMSet(NULL, (char *)pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(), "%s %u %s %s %s %s",
+		pAccountNameChannel->HMSet(NULL, (char *)pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(), "%s %u %s %s %s %s %s %s",
 				pConfigAccountInfo->uin, stVerifyAuthCodeResp.m_nUin, pConfigAccountInfo->accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
-				pConfigAccountInfo->password, pUserSession->m_stVerifyAuthCodeReq.m_strPassword.c_str());
+				pConfigAccountInfo->password, pUserSession->m_stVerifyAuthCodeReq.m_strPassword.c_str(), pConfigAccountInfo->accountid,
+				"787878");
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, "send ");
 
@@ -250,10 +253,10 @@ int32_t CVerifyAuthCodeHandler::OnRedisSessionTimeout(void *pTimerData)
 
 	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REQUESTAUTH_RESP));
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_VERIFYAUTHCODE_RESP));
 	if(pRespChannel == NULL)
 	{
-		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_REQUESTAUTH_RESP,
+		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_VERIFYAUTHCODE_RESP,
 				pUserSession->m_stMsgHeadCS.m_nSrcUin, pUserSession->m_stMsgHeadCS.m_nDstUin);
 		pRedisSessionBank->DestroySession(pRedisSession);
 		return 0;
@@ -264,7 +267,7 @@ int32_t CVerifyAuthCodeHandler::OnRedisSessionTimeout(void *pTimerData)
 	uint8_t arrRespBuf[MAX_MSG_SIZE];
 
 	MsgHeadCS stMsgHeadCS;
-	stMsgHeadCS.m_nMsgID = MSGID_REQUESTAUTH_RESP;
+	stMsgHeadCS.m_nMsgID = MSGID_VERIFYAUTHCODE_RESP;
 	stMsgHeadCS.m_nSeq = pUserSession->m_stMsgHeadCS.m_nSeq;
 	stMsgHeadCS.m_nSrcUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
 	stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nDstUin;
@@ -274,7 +277,7 @@ int32_t CVerifyAuthCodeHandler::OnRedisSessionTimeout(void *pTimerData)
 	stVerifyAuthCodeResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stVerifyAuthCodeResp.m_nResult);
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, "send ");
 
