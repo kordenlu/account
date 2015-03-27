@@ -27,7 +27,8 @@ class CUserLoginHandler : public CBaseObject
 		{
 			m_nUin = 0;
 		}
-		uint32_t			m_nUin;
+		uint32_t				m_nUin;
+		string				m_strAccountID;
 		ControlHead			m_stCtlHead;
 		MsgHeadCS			m_stMsgHeadCS;
 		CUserLoginReq		m_stUserLoginReq;

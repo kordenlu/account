@@ -55,8 +55,8 @@ int32_t CUserLoginHandler::UserLogin(ICtlHead *pCtlHead, IMsgHead *pMsgHead, IMs
 
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 	CRedisChannel *pAccountNameChannel = pRedisBank->GetRedisChannel(pConfigAccountInfo->string);
-	pAccountNameChannel->HMGet(pSession, (char *)(pUserLoginReq->m_strAccountName.c_str()), "%s %s %s", pConfigAccountInfo->uin,
-			pConfigAccountInfo->password, pConfigAccountInfo->status);
+	pAccountNameChannel->HMGet(pSession, (char *)(pUserLoginReq->m_strAccountName.c_str()), "%s %s %s %s", pConfigAccountInfo->uin,
+			pConfigAccountInfo->password, pConfigAccountInfo->status, pConfigAccountInfo->accountid);
 
 	return 0;
 }
@@ -89,6 +89,7 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 	uint32_t nUin = 0;
 	string strPassword;
 	int32_t nAccountStatus = 0;
+	string strAccountID;
 
 	bool bIsReturn = false;
 	do
@@ -139,6 +140,18 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 				bIsReturn = true;
 				break;
 			}
+
+			pReplyElement = pRedisReply->element[3];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				strAccountID = string(pReplyElement->str);
+			}
+			else
+			{
+				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
+				bIsReturn = true;
+				break;
+			}
 		}
 	}while(0);
 
@@ -153,7 +166,7 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 		stUserLoginResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stUserLoginResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, arrRespBuf, sizeof(arrRespBuf));
-		pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+		pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, "send ");
 
@@ -165,13 +178,13 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CUserLoginHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 
 		pUserSession->m_nUin = nUin;
+		pUserSession->m_strAccountID = strAccountID;
 
 		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASE_INFO);
 
 		CRedisChannel *pGetUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
-		pGetUserBaseInfoChannel->HMGet(pRedisSession, itoa(pUserSession->m_nUin), "%s %s %s %s %s %s %s %s",
-				pConfigUserBaseInfo->nickname, pConfigUserBaseInfo->gender, pConfigUserBaseInfo->headimage, pConfigUserBaseInfo->care_people_count,
-				pConfigUserBaseInfo->fans_count, pConfigUserBaseInfo->friends_count, pConfigUserBaseInfo->mytopic_count, pConfigUserBaseInfo->jointopic_count);
+		pGetUserBaseInfoChannel->HMGet(pRedisSession, itoa(pUserSession->m_nUin), "%s %s %s %s",
+				pConfigUserBaseInfo->nickname, pConfigUserBaseInfo->gender, pConfigUserBaseInfo->headimage, pConfigUserBaseInfo->version);
 	}
 
 	return 0;
@@ -225,86 +238,48 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 			{
 				stUserLoginResp.m_strNickName = pReplyElement->str;
 			}
-			else
-			{
-				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-				bIsReturn = true;
-				break;
-			}
+//			else
+//			{
+//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
+//				bIsReturn = true;
+//				break;
+//			}
 
 			pReplyElement = pRedisReply->element[1];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_nGender = atoi(pReplyElement->str);
 			}
-			else
-			{
-				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-				bIsReturn = true;
-				break;
-			}
+//			else
+//			{
+//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
+//				bIsReturn = true;
+//				break;
+//			}
 
 			pReplyElement = pRedisReply->element[2];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_strHeadImageAddr = pReplyElement->str;
 			}
-			else
-			{
-				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-				bIsReturn = true;
-				break;
-			}
+//			else
+//			{
+//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
+//				bIsReturn = true;
+//				break;
+//			}
 
 			pReplyElement = pRedisReply->element[3];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
-				stUserLoginResp.m_nCarePeopleCount = atoi(pReplyElement->str);
+				stUserLoginResp.m_nSelfInfoVersion = atoi(pReplyElement->str);
 			}
-			else
-			{
-				stUserLoginResp.m_nCarePeopleCount = 0;
-			}
-
-			pReplyElement = pRedisReply->element[4];
-			if(pReplyElement->type != REDIS_REPLY_NIL)
-			{
-				stUserLoginResp.m_nFansCount = atoi(pReplyElement->str);
-			}
-			else
-			{
-				stUserLoginResp.m_nFansCount = 0;
-			}
-
-			pReplyElement = pRedisReply->element[5];
-			if(pReplyElement->type != REDIS_REPLY_NIL)
-			{
-				stUserLoginResp.m_nFriendsCount = atoi(pReplyElement->str);
-			}
-			else
-			{
-				stUserLoginResp.m_nFriendsCount = 0;
-			}
-
-			pReplyElement = pRedisReply->element[6];
-			if(pReplyElement->type != REDIS_REPLY_NIL)
-			{
-				stUserLoginResp.m_nMyTopicCount = atoi(pReplyElement->str);
-			}
-			else
-			{
-				stUserLoginResp.m_nMyTopicCount = 0;
-			}
-
-			pReplyElement = pRedisReply->element[7];
-			if(pReplyElement->type != REDIS_REPLY_NIL)
-			{
-				stUserLoginResp.m_nJoinTopicCount = atoi(pReplyElement->str);
-			}
-			else
-			{
-				stUserLoginResp.m_nJoinTopicCount = 0;
-			}
+//			else
+//			{
+//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
+//				bIsReturn = true;
+//				break;
+//			}
 		}
 	}while(0);
 
@@ -315,10 +290,11 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 	else
 	{
 		stUserLoginResp.m_nUin = pUserSession->m_nUin;
+		stUserLoginResp.m_strAccountID = pUserSession->m_strAccountID;
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, "send ");
 
@@ -359,7 +335,7 @@ int32_t CUserLoginHandler::OnRedisSessionTimeout(void *pTimerData)
 	stUserLoginResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stUserLoginResp.m_nResult);
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, "send ");
 
