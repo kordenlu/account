@@ -53,7 +53,7 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 	CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
 	pUserBaseInfoChannel->HMSet(NULL, itoa(pMsgHeadCS->m_nSrcUin), "%s %s %s %s %s %s %s %d %s %d", pConfigUserBaseInfo->nickname,
 			pRegistBaseInfoReq->m_strNickName.c_str(), pConfigUserBaseInfo->headimage, pRegistBaseInfoReq->m_strHeadImageAddr.c_str(),
-			pConfigUserBaseInfo->brithday, pRegistBaseInfoReq->m_strBirthday.c_str(), pConfigUserBaseInfo->age, nAge, pConfigUserBaseInfo->gender,
+			pConfigUserBaseInfo->birthday, pRegistBaseInfoReq->m_strBirthday.c_str(), pConfigUserBaseInfo->age, nAge, pConfigUserBaseInfo->gender,
 			pRegistBaseInfoReq->m_nGender);
 
 	uint8_t arrRespBuf[MAX_MSG_SIZE];
@@ -70,7 +70,7 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
 	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REGISTBASEINFO_RESP));
 	uint16_t nTotalSize = CServerHelper::MakeMsg(pCtlHead, &stMsgHeadCS, &stRegistBaseInfoResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->Publish(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(pCtlHead, &stMsgHeadCS, &stRegistBaseInfoResp, "send ");
 	return 0;
