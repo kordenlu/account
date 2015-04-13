@@ -49,7 +49,7 @@ public:
 
 	int32_t OnSessionGetRegistPhoneInfo(int32_t nResult, void *pReply, void *pSession);
 
-	int32_t OnSessionGetGobalUin(int32_t nResult, void *pReply, void *pSession);
+	int32_t OnSessionGetAccount(int32_t nResult, void *pReply, void *pSession);
 
 	int32_t OnRedisSessionTimeout(void *pTimerData);
 };

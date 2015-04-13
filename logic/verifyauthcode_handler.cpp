@@ -19,6 +19,7 @@
 #include "../config/string_config.h"
 #include "../server_typedef.h"
 #include "../bank/redis_bank.h"
+#include <string.h>
 
 using namespace LOGGER;
 using namespace FRAME;
@@ -51,7 +52,7 @@ int32_t CVerifyAuthCodeHandler::VerifyAuthCode(ICtlHead *pCtlHead, IMsgHead *pMs
 	pSessionData->m_stMsgHeadCS = *pMsgHeadCS;
 	pSessionData->m_stVerifyAuthCodeReq = *pVerifyAuthCodeReq;
 
-	RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONE_INFO);
+	RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONEINFO);
 
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 	CRedisChannel *pRedisChannel = pRedisBank->GetRedisChannel(pConfigRegistPhoneInfo->string);
@@ -113,6 +114,11 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 				nAuthCodeExpireTime = atoi(pReplyElement->str);
 			}
 		}
+		else
+		{
+			bIsReturn = true;
+			break;
+		}
 
 		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
 		if(nCurTime > nAuthCodeExpireTime)
@@ -149,19 +155,17 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 	}
 	else
 	{
-		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CVerifyAuthCodeHandler::OnSessionGetGobalUin));
+		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CVerifyAuthCodeHandler::OnSessionGetAccount));
 		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CVerifyAuthCodeHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 
-		GlobalUin *pConfigGlobalUin = (GlobalUin *)g_Frame.GetConfig(GLOBAL_UIN);
-
-		CRedisChannel *pGobalUinChannl = pRedisBank->GetRedisChannel(pConfigGlobalUin->string);
-		pGobalUinChannl->Incr(pRedisSession, NULL);
+		CRedisChannel *pAccountPoolChannl = pRedisBank->GetRedisChannel(ACCOUNT_POOL);
+		pAccountPoolChannl->LPop(pRedisSession);
 	}
 
 	return 0;
 }
 
-int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pReply, void *pSession)
+int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pReply, void *pSession)
 {
 	redisReply *pRedisReply = (redisReply *)pReply;
 	RedisSession *pRedisSession = (RedisSession *)pSession;
@@ -196,13 +200,28 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pRep
 			break;
 		}
 
-		if(pRedisReply->type == REDIS_REPLY_INTEGER)
+		if(pRedisReply->type == REDIS_REPLY_STRING)
 		{
-			stVerifyAuthCodeResp.m_nUin = pRedisReply->integer;
-			pUserSession->m_stMsgHeadCS.m_nSrcUin = pRedisReply->integer;
-		}
+			char *pColon = strchr(pRedisReply->str, ':');
+			if(pColon == NULL)
+			{
+				stVerifyAuthCodeResp.m_nResult = CVerifyAuthCodeResp::enmResult_Unknown;
+				bIsReturn = true;
+				break;
+			}
 
-		stVerifyAuthCodeResp.m_strAccountID = "787878";
+			*pColon = '\0';
+			++pColon;
+
+			stVerifyAuthCodeResp.m_nUin = atoi(pColon);
+			pUserSession->m_stMsgHeadCS.m_nSrcUin = atoi(pColon);
+			stVerifyAuthCodeResp.m_strAccountID = string(pRedisReply->str);
+		}
+		else
+		{
+			bIsReturn = true;
+			break;
+		}
 	}while(0);
 
 	MsgHeadCS stMsgHeadCS;
@@ -217,7 +236,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pRep
 	}
 	else
 	{
-		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASE_INFO);
+		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
 
 		CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
 		pUserBaseInfoChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %d %s %s %s %d %s %ld",
@@ -232,7 +251,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetGobalUin(int32_t nResult, void *pRep
 		pAccountNameChannel->HMSet(NULL, (char *)pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(), "%s %u %s %s %s %s %s %s",
 				pConfigAccountInfo->uin, stVerifyAuthCodeResp.m_nUin, pConfigAccountInfo->accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
 				pConfigAccountInfo->password, pUserSession->m_stVerifyAuthCodeReq.m_strPassword.c_str(), pConfigAccountInfo->accountid,
-				"787878");
+				stVerifyAuthCodeResp.m_strAccountID.c_str());
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
