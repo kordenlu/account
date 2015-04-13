@@ -15,6 +15,7 @@
 #include "../../include/cachekey_define.h"
 #include "../../include/control_head.h"
 #include "../../include/typedef.h"
+#include "../../include/sync_msg.h"
 #include "../config/msgdispatch_config.h"
 #include "../config/string_config.h"
 #include "../server_typedef.h"
@@ -153,6 +154,12 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 				break;
 			}
 		}
+		else
+		{
+			bIsReturn = true;
+			break;
+		}
+
 	}while(0);
 
 	if(bIsReturn)
@@ -180,7 +187,7 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 		pUserSession->m_nUin = nUin;
 		pUserSession->m_strAccountID = strAccountID;
 
-		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASE_INFO);
+		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
 
 		CRedisChannel *pGetUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
 		pGetUserBaseInfoChannel->HMGet(pRedisSession, itoa(pUserSession->m_nUin), "%s %s %s %s",
@@ -281,6 +288,11 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 //				break;
 //			}
 		}
+		else
+		{
+			bIsReturn = true;
+			break;
+		}
 	}while(0);
 
 	if(bIsReturn)
@@ -291,6 +303,14 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 	{
 		stUserLoginResp.m_nUin = pUserSession->m_nUin;
 		stUserLoginResp.m_strAccountID = pUserSession->m_strAccountID;
+
+		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CUserLoginHandler::OnSessionGetUnreadMsgCount));
+
+		CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
+		UserUnreadMsgList *pUnreadMsgList = (UserUnreadMsgList *)g_Frame.GetConfig(USER_UNREADMSGLIST);
+		CRedisChannel *pUnreadMsgChannel = pRedisBank->GetRedisChannel(pUnreadMsgList->string);
+
+		pUnreadMsgChannel->ZCount(pRedisSession, itoa(stMsgHeadCS.m_nSrcUin));
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, arrRespBuf, sizeof(arrRespBuf));
@@ -298,6 +318,63 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stUserLoginResp, "send ");
 
+	if(bIsReturn)
+	{
+		pRedisSessionBank->DestroySession(pRedisSession);
+	}
+
+	return 0;
+}
+
+int32_t CUserLoginHandler::OnSessionGetUnreadMsgCount(int32_t nResult, void *pReply, void *pSession)
+{
+	redisReply *pRedisReply = (redisReply *)pReply;
+	RedisSession *pRedisSession = (RedisSession *)pSession;
+	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
+
+	bool bIsSyncNoti = true;
+	do
+	{
+		if(pRedisReply->type == REDIS_REPLY_ERROR)
+		{
+			bIsSyncNoti = false;
+			break;
+		}
+
+		if(pRedisReply->type == REDIS_REPLY_INTEGER)
+		{
+			if(pRedisReply->integer <= 0)
+			{
+				bIsSyncNoti = false;
+				break;
+			}
+		}
+		else
+		{
+			bIsSyncNoti = false;
+			break;
+		}
+	}while(0);
+
+	if(bIsSyncNoti)
+	{
+		MsgHeadCS stMsgHeadCS;
+		stMsgHeadCS.m_nMsgID = MSGID_STATUSSYNC_NOTI;
+		stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
+
+		CStatusSyncNoti stStatusSyncNoti;
+
+		uint8_t arrRespBuf[MAX_MSG_SIZE];
+
+		CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
+		CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
+		CRedisChannel *pPushClientChannel = pRedisBank->GetRedisChannel(pUserSession->m_stCtlHead.m_nGateID, pMsgDispatchConfig->GetChannelKey(MSGID_STATUSSYNC_NOTI));
+
+		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stStatusSyncNoti, arrRespBuf, sizeof(arrRespBuf));
+		pPushClientChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
+	}
+
+	CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
 	pRedisSessionBank->DestroySession(pRedisSession);
 
 	return 0;
