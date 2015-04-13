@@ -20,6 +20,7 @@ using namespace FRAME;
 class CRedisBank : public IBank
 {
 	typedef map<string, CRedisChannel *>	RedisServerMap;
+	typedef map<int32_t, RedisServerMap>	RedisServerIDMap;
 public:
 	CRedisBank()
 	{
@@ -36,8 +37,11 @@ public:
 	CRedisChannel *GetRedisChannel(uint32_t key);
 	//根据cache key获取redis对象
 	CRedisChannel *GetRedisChannel(string strKey);
+	//根据serverid and cache key获取redis对象
+	CRedisChannel *GetRedisChannel(int32_t nServerID, string strKey);
 protected:
 	RedisServerMap		m_stRedisServerMap;
+	RedisServerIDMap	m_stRedisServerIDMap;
 	int32_t				m_nHashTableSize;
 	CRedisChannel		*m_arrRedisHashTable[MAX_REDISHASH_COUNT];
 };

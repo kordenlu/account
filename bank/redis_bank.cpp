@@ -47,6 +47,7 @@ int32_t CRedisBank::Init()
 		}
 		pRedisChannel->Connect();
 
+		m_stRedisServerIDMap[arrRedisServerInfo[i].nServerID][arrRedisServerInfo[i].arrChannelKey] = pRedisChannel;
 		m_stRedisServerMap[arrRedisServerInfo[i].arrChannelKey] = pRedisChannel;
 
 		m_arrRedisHashTable[m_nHashTableSize++] = pRedisChannel;
@@ -102,4 +103,21 @@ CRedisChannel *CRedisBank::GetRedisChannel(string strKey)
 
 	return pRedisChannel;
 }
+
+//根据serverid and cache key获取redis对象
+CRedisChannel *CRedisBank::GetRedisChannel(int32_t nServerID, string strKey)
+{
+	RedisServerIDMap::iterator it = m_stRedisServerIDMap.find(nServerID);
+	if(it != m_stRedisServerIDMap.end())
+	{
+		RedisServerMap::iterator et = it->second.find(strKey);
+		if(et != it->second.end())
+		{
+			return et->second;
+		}
+	}
+
+	return NULL;
+}
+
 
