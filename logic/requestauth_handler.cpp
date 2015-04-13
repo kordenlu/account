@@ -129,7 +129,7 @@ int32_t CRequstAuthHandler::OnSessionAccountIsExist(int32_t nResult, void *pRepl
 		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CRequstAuthHandler::OnSessionGetRegistPhoneInfo));
 		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CRequstAuthHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 
-		RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONE_INFO);
+		RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONEINFO);
 
 		CRedisChannel *pGetRegistPhoneInfoChannel = pRedisBank->GetRedisChannel(pConfigRegistPhoneInfo->string);
 		pGetRegistPhoneInfoChannel->HMGet(pRedisSession, (char *)(pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()), "%s %s %s %s",
@@ -207,6 +207,11 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 				nAuthCodeExpireTime = atoi(pReplyElement->str);
 			}
 		}
+		else
+		{
+			bIsReturn = true;
+			break;
+		}
 
 		int32_t nCurDate = CDateTime::CurrentDateTime().Date();
 		if(nCurDate == nLastRegistDate)
@@ -219,7 +224,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 			}
 		}
 
-		RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONE_INFO);
+		RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONEINFO);
 
 		CRedisChannel *pPhoneInfo = pRedisBank->GetRedisChannel(pConfigRegistPhoneInfo->string);
 		if(nCurDate == nLastRegistDate)
@@ -273,7 +278,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 		pUserSession->m_nAuthCode = nAuthCode;
 		pUserSession->m_nAuthCodeExpireTime = nAuthCodeExpireTime;
 
-		RegistAddrInfo *pConfigRegistAddrInfo = (RegistAddrInfo *)g_Frame.GetConfig(REGIST_ADDR_INFO);
+		RegistAddrInfo *pConfigRegistAddrInfo = (RegistAddrInfo *)g_Frame.GetConfig(REGIST_ADDRINFO);
 
 		CRedisChannel *pAddrInfoChannel = pRedisBank->GetRedisChannel(pConfigRegistAddrInfo->string);
 		pAddrInfoChannel->HMGet(pRedisSession, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress), "%s %s",
@@ -336,6 +341,11 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 				nLastRegistDate = atoi(pReplyElement->str);
 			}
 		}
+		else
+		{
+			bIsReturn = true;
+			break;
+		}
 
 		int32_t nCurDate = CDateTime::CurrentDateTime().Date();
 		if(nCurDate == nLastRegistDate)
@@ -348,7 +358,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 			}
 		}
 
-		RegistAddrInfo *pConfigRegistAddrInfo = (RegistAddrInfo *)g_Frame.GetConfig(REGIST_ADDR_INFO);
+		RegistAddrInfo *pConfigRegistAddrInfo = (RegistAddrInfo *)g_Frame.GetConfig(REGIST_ADDRINFO);
 
 		CRedisChannel *pAddrInfo = pRedisBank->GetRedisChannel(pConfigRegistAddrInfo->string);
 		if(nCurDate == nLastRegistDate)
