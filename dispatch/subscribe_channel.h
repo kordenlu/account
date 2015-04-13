@@ -19,6 +19,8 @@ public:
 		CRedisChannel(nServerID, pAddress, nPort, pChannelKey)
 	{
 		m_pSubscribeSession = NULL;
+		m_nIdleCount = 0;
+		m_nRestCount = 0;
 	}
 
 	virtual int32_t Init()
@@ -44,6 +46,8 @@ public:
 
 protected:
 	RedisSession 		*m_pSubscribeSession;
+	int32_t				m_nIdleCount;
+	int32_t				m_nRestCount;
 };
 
 

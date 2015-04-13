@@ -37,7 +37,14 @@ void CSubscribeChannel::OnClosed()
 
 int32_t CSubscribeChannel::Run()
 {
-	LPop(m_pSubscribeSession);
+	if(m_nRestCount > 0)
+	{
+		--m_nRestCount;
+	}
+	else
+	{
+		LPop(m_pSubscribeSession);
+	}
 	return 0;
 }
 
@@ -81,6 +88,17 @@ int32_t CSubscribeChannel::OnRedisReply(int32_t nResult, void *pReply, void *pSe
 		else if(nRet == 2)
 		{
 			WRITE_WARN_LOG(SERVER_NAME, "decode msg failed!{msgid=0x%04x}\n", nMsgID);
+		}
+
+		m_nIdleCount = 0;
+	}
+	else
+	{
+		m_nIdleCount++;
+		if(m_nIdleCount > 1)
+		{
+			m_nRestCount = m_nIdleCount;
+			m_nIdleCount = 0;
 		}
 	}
 
