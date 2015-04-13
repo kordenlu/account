@@ -1,8 +1,9 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
 <msg>
-	<param msgid="2" channel_key="client_account_resp"/>
-	<param msgid="5" channel_key="client_account_resp"/>
-	<param msgid="8" channel_key="client_account_resp"/>
-	<param msgid="11" channel_key="client_account_resp"/>
+	<param msgid="60200" channel_key="server:statussync:noti"/>
+	<param msgid="2" channel_key="client:account:resp"/>
+	<param msgid="5" channel_key="client:account:resp"/>
+	<param msgid="8" channel_key="client:account:resp"/>
+	<param msgid="11" channel_key="client:account:resp"/>
 </msg>
 
