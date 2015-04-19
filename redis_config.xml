@@ -7,6 +7,7 @@
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="account:pool"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="user:baseinfo:"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="accountinfo:"/>
+	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="accountid:"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="server:statussync:noti"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="user:unreadmsglist:"/>
 </redis>
