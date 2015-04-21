@@ -156,6 +156,7 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 		}
 		else
 		{
+			stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
 			bIsReturn = true;
 			break;
 		}
@@ -290,6 +291,7 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 		}
 		else
 		{
+			stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
 			bIsReturn = true;
 			break;
 		}

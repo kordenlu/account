@@ -209,6 +209,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 		}
 		else
 		{
+			stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_Unknown;
 			bIsReturn = true;
 			break;
 		}
@@ -343,6 +344,7 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 		}
 		else
 		{
+			stAuthRegistPhoneResp.m_nResult = CRequestAuthResp::enmResult_Unknown;
 			bIsReturn = true;
 			break;
 		}
