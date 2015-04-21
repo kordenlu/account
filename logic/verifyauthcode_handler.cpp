@@ -220,6 +220,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 		}
 		else
 		{
+			stVerifyAuthCodeResp.m_nResult = CVerifyAuthCodeResp::enmResult_Unknown;
 			bIsReturn = true;
 			break;
 		}
@@ -240,10 +241,11 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
 
 		CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
-		pUserBaseInfoChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %d %s %s %s %d %s %ld",
+		pUserBaseInfoChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %d %s %s %s %d %s %s %s %ld",
 				pConfigUserBaseInfo->version, 1,
 				pConfigUserBaseInfo->accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
 				pConfigUserBaseInfo->uin, stVerifyAuthCodeResp.m_nUin,
+				pConfigUserBaseInfo->accountid, (char *)strAccountID.c_str(),
 				pConfigUserBaseInfo->createtime, CDateTime::CurrentDateTime().Seconds());
 
 		AccountInfo *pConfigAccountInfo = (AccountInfo *)g_Frame.GetConfig(ACCOUNT_INFO);
