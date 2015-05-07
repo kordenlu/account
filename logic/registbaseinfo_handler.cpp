@@ -15,7 +15,6 @@
 #include "../../include/cachekey_define.h"
 #include "../../include/control_head.h"
 #include "../../include/typedef.h"
-#include "../config/msgdispatch_config.h"
 #include "../config/string_config.h"
 #include "../server_typedef.h"
 #include "../bank/redis_bank.h"
@@ -67,8 +66,7 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 	CRegistBaseInfoResp stRegistBaseInfoResp;
 	stRegistBaseInfoResp.m_nResult = CRegistBaseInfoResp::enmResult_OK;
 
-	CMsgDispatchConfig *pMsgDispatchConfig = (CMsgDispatchConfig *)g_Frame.GetConfig(CONFIG_MSGDISPATCH);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pMsgDispatchConfig->GetChannelKey(MSGID_REGISTBASEINFO_RESP));
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(CLIENT_RESP);
 	uint16_t nTotalSize = CServerHelper::MakeMsg(pCtlHead, &stMsgHeadCS, &stRegistBaseInfoResp, arrRespBuf, sizeof(arrRespBuf));
 	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
 
