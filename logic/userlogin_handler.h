@@ -54,9 +54,14 @@ public:
 
 	int32_t OnSessionGetUserBaseInfo(int32_t nResult, void *pReply, void *pSession);
 
+	int32_t OnSessionGetUserSessionInfo(int32_t nResult, void *pReply, void *pSession);
+
 	int32_t OnSessionGetUnreadMsgCount(int32_t nResult, void *pReply, void *pSession);
 
 	int32_t OnRedisSessionTimeout(void *pTimerData);
+
+private:
+	void SetUserSessionInfo(UserSession *pUserSession);
 };
 
 
