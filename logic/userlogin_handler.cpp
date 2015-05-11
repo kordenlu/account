@@ -15,7 +15,6 @@
 #include "../../include/cachekey_define.h"
 #include "../../include/control_head.h"
 #include "../../include/typedef.h"
-#include "../../include/sync_msg.h"
 #include "../config/server_config.h"
 #include "../config/string_config.h"
 #include "../server_typedef.h"
@@ -190,8 +189,10 @@ int32_t CUserLoginHandler::OnSessionGetAccountInfo(int32_t nResult, void *pReply
 		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
 
 		CRedisChannel *pGetUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
-		pGetUserBaseInfoChannel->HMGet(pRedisSession, itoa(pUserSession->m_nUin), "%s %s %s %s",
-				pConfigUserBaseInfo->nickname, pConfigUserBaseInfo->gender, pConfigUserBaseInfo->headimage, pConfigUserBaseInfo->version);
+		pGetUserBaseInfoChannel->HMGet(pRedisSession, itoa(pUserSession->m_nUin), "%s %s %s %s %s %s %s %s %s",
+				pConfigUserBaseInfo->nickname, pConfigUserBaseInfo->gender, pConfigUserBaseInfo->headimage, pConfigUserBaseInfo->version,
+				pConfigUserBaseInfo->followers_count, pConfigUserBaseInfo->fans_count, pConfigUserBaseInfo->friends_count,
+				pConfigUserBaseInfo->createtopics_count, pConfigUserBaseInfo->jointopics_count);
 	}
 
 	return 0;
@@ -239,53 +240,60 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 
 		if(pRedisReply->type == REDIS_REPLY_ARRAY)
 		{
-			redisReply *pReplyElement = pRedisReply->element[0];
+			int32_t nIndex = 0;
+			redisReply *pReplyElement = pRedisReply->element[nIndex++];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_strNickName = pReplyElement->str;
 			}
-//			else
-//			{
-//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-//				bIsReturn = true;
-//				break;
-//			}
 
-			pReplyElement = pRedisReply->element[1];
+			pReplyElement = pRedisReply->element[nIndex++];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_nGender = atoi(pReplyElement->str);
 			}
-//			else
-//			{
-//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-//				bIsReturn = true;
-//				break;
-//			}
 
-			pReplyElement = pRedisReply->element[2];
+			pReplyElement = pRedisReply->element[nIndex++];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_strHeadImageAddr = pReplyElement->str;
 			}
-//			else
-//			{
-//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-//				bIsReturn = true;
-//				break;
-//			}
 
-			pReplyElement = pRedisReply->element[3];
+			pReplyElement = pRedisReply->element[nIndex++];
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_nSelfInfoVersion = atoi(pReplyElement->str);
 			}
-//			else
-//			{
-//				stUserLoginResp.m_nResult = CUserLoginResp::enmResult_Unknown;
-//				bIsReturn = true;
-//				break;
-//			}
+
+			pReplyElement = pRedisReply->element[nIndex++];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				stUserLoginResp.m_nCreateTopicsCount = atoi(pReplyElement->str);
+			}
+
+			pReplyElement = pRedisReply->element[nIndex++];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				stUserLoginResp.m_nFansCount = atoi(pReplyElement->str);
+			}
+
+			pReplyElement = pRedisReply->element[nIndex++];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				stUserLoginResp.m_nFriendsCount = atoi(pReplyElement->str);
+			}
+
+			pReplyElement = pRedisReply->element[nIndex++];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				stUserLoginResp.m_nCreateTopicsCount = atoi(pReplyElement->str);
+			}
+
+			pReplyElement = pRedisReply->element[nIndex++];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				stUserLoginResp.m_nJoinTopicsCount = atoi(pReplyElement->str);
+			}
 		}
 		else
 		{
@@ -308,7 +316,6 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CUserLoginHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 
 		UserSessionInfo *pUserSessionInfo = (UserSessionInfo *)g_Frame.GetConfig(USER_SESSIONINFO);
-		CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 		CRedisChannel *pUserSessionChannel = pRedisBank->GetRedisChannel(USER_SESSIONINFO);
 
 		pUserSessionChannel->Multi();
@@ -316,9 +323,10 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 		pUserSessionChannel->HMGet(NULL, itoa(pUserSession->m_stMsgHeadCS.m_nSrcUin), "%s %s %s %s", pUserSessionInfo->clientaddress,
 				pUserSessionInfo->clientport, pUserSessionInfo->sessionid, pUserSessionInfo->gateid);
 
-		pUserSessionChannel->HMSet(NULL, itoa(pUserSession->m_stMsgHeadCS.m_nSrcUin), "%s %u %s %u %s %d %s %d", pUserSessionInfo->sessionid,
+		pUserSessionChannel->HMSet(NULL, itoa(pUserSession->m_stMsgHeadCS.m_nSrcUin), "%s %u %s %u %s %d %s %d %s %d", pUserSessionInfo->sessionid,
 				pUserSession->m_stCtlHead.m_nSessionID, pUserSessionInfo->clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
-				pUserSessionInfo->clientport, pUserSession->m_stCtlHead.m_nClientPort, pUserSessionInfo->gateid, pUserSession->m_stCtlHead.m_nGateID);
+				pUserSessionInfo->clientport, pUserSession->m_stCtlHead.m_nClientPort, pUserSessionInfo->gateid, pUserSession->m_stCtlHead.m_nGateID,
+				pUserSessionInfo->phonetype, pUserSession->m_stCtlHead.m_nPhoneType);
 
 		pUserSessionChannel->Expire(NULL, itoa(pUserSession->m_stMsgHeadCS.m_nSrcUin), HEARTBEAT_INTERVAL * HEARTBEAT_MISS);
 
@@ -344,6 +352,7 @@ int32_t CUserLoginHandler::OnSessionGetUserSessionInfo(int32_t nResult, void *pR
 	RedisSession *pRedisSession = (RedisSession *)pSession;
 	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
 
+	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 	ControlHead stCtlHead;
 
 	bool bGetSessionSuccess = true;
@@ -417,7 +426,6 @@ int32_t CUserLoginHandler::OnSessionGetUserSessionInfo(int32_t nResult, void *pR
 	{
 		stCtlHead.m_nUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
 
-		CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 		CRedisChannel *pClientRespChannel = pRedisBank->GetRedisChannel(stCtlHead.m_nGateID, CLIENT_RESP);
 
 		CServerHelper::KickUser(&stCtlHead, &pUserSession->m_stMsgHeadCS, pClientRespChannel, KickReason_AnotherLogin);
@@ -425,11 +433,17 @@ int32_t CUserLoginHandler::OnSessionGetUserSessionInfo(int32_t nResult, void *pR
 
 	pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CUserLoginHandler::OnSessionGetUnreadMsgCount));
 
-	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 	UserUnreadMsgList *pUnreadMsgList = (UserUnreadMsgList *)g_Frame.GetConfig(USER_UNREADMSGLIST);
 	CRedisChannel *pUnreadMsgChannel = pRedisBank->GetRedisChannel(pUnreadMsgList->string);
 
 	pUnreadMsgChannel->ZCount(pRedisSession, itoa(pUserSession->m_stMsgHeadCS.m_nSrcUin));
+
+	UserBaseInfo *pUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
+	CRedisChannel *pUserBaseChannel = pRedisBank->GetRedisChannel(USER_BASEINFO);
+	pUserBaseChannel->HMSet(NULL, itoa(pUserSession->m_stMsgHeadCS.m_nSrcUin), "%s %d %s %s %s %s %s %ld", pUserBaseInfo->phonetype,
+			pUserSession->m_stUserLoginReq.m_nPhoneType, pUserBaseInfo->osversion, pUserSession->m_stUserLoginReq.m_strOSVer.c_str(),
+			pUserBaseInfo->phonestyle, pUserSession->m_stUserLoginReq.m_strPhoneStyle.c_str(), pUserBaseInfo->lastlogintime,
+			CDateTime::CurrentDateTime().Seconds());
 
 	return 0;
 }
@@ -466,19 +480,10 @@ int32_t CUserLoginHandler::OnSessionGetUnreadMsgCount(int32_t nResult, void *pRe
 
 	if(bIsSyncNoti)
 	{
-		MsgHeadCS stMsgHeadCS;
-		stMsgHeadCS.m_nMsgID = MSGID_STATUSSYNC_NOTI;
-		stMsgHeadCS.m_nDstUin = pUserSession->m_stMsgHeadCS.m_nSrcUin;
-
-		CStatusSyncNoti stStatusSyncNoti;
-
-		uint8_t arrRespBuf[MAX_MSG_SIZE];
-
 		CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 		CRedisChannel *pPushClientChannel = pRedisBank->GetRedisChannel(pUserSession->m_stCtlHead.m_nGateID, CLIENT_RESP);
 
-		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stStatusSyncNoti, arrRespBuf, sizeof(arrRespBuf));
-		pPushClientChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
+		CServerHelper::SendSyncNoti(pPushClientChannel, &pUserSession->m_stCtlHead, pUserSession->m_stMsgHeadCS.m_nSrcUin);
 	}
 
 	CRedisSessionBank *pRedisSessionBank = (CRedisSessionBank *)g_Frame.GetBank(BANK_REDIS_SESSION);
