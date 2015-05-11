@@ -237,13 +237,18 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 	{
 		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
 
+		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
 		CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
-		pUserBaseInfoChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %d %s %s %s %d %s %s %s %ld",
+		pUserBaseInfoChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %d %s %s %s %d %s %s %s %ld %s %d %s %s s %s %s %ld",
 				pConfigUserBaseInfo->version, 1,
 				pConfigUserBaseInfo->accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
 				pConfigUserBaseInfo->uin, stVerifyAuthCodeResp.m_nUin,
 				pConfigUserBaseInfo->accountid, (char *)strAccountID.c_str(),
-				pConfigUserBaseInfo->createtime, CDateTime::CurrentDateTime().Seconds());
+				pConfigUserBaseInfo->createtime, nCurTime,
+				pConfigUserBaseInfo->phonetype, pUserSession->m_stVerifyAuthCodeReq.m_nPhoneType,
+				pConfigUserBaseInfo->osversion, pUserSession->m_stVerifyAuthCodeReq.m_strOSVer.c_str(),
+				pConfigUserBaseInfo->phonestyle, pUserSession->m_stVerifyAuthCodeReq.m_strPhoneStyle.c_str(),
+				pConfigUserBaseInfo->lastlogintime, nCurTime);
 
 		AccountInfo *pConfigAccountInfo = (AccountInfo *)g_Frame.GetConfig(ACCOUNT_INFO);
 
@@ -255,6 +260,14 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 
 		CRedisChannel *pAccountIDChannel = pRedisBank->GetRedisChannel(ACCOUNTID);
 		pAccountIDChannel->Set(NULL, (char *)strAccountID.c_str(), (char *)pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str());
+
+		UserSessionInfo *pConfigUserSessionInfo = (UserSessionInfo *)g_Frame.GetConfig(USER_SESSIONINFO);
+
+		CRedisChannel *pUserSessionChannel = pRedisBank->GetRedisChannel(USER_SESSIONINFO);
+		pUserSessionChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %u %s %u %s %d %s %d %s %d", pConfigUserSessionInfo->sessionid,
+				pUserSession->m_stCtlHead.m_nSessionID, pConfigUserSessionInfo->clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
+				pConfigUserSessionInfo->clientport, pUserSession->m_stCtlHead.m_nClientPort, pConfigUserSessionInfo->gateid, pUserSession->m_stCtlHead.m_nGateID,
+				pConfigUserSessionInfo->phonetype, pUserSession->m_stCtlHead.m_nPhoneType);
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
