@@ -36,6 +36,8 @@ public:
 	//卸载配置
 	virtual int32_t Uninit();
 
+	virtual int32_t Parser(char *pXMLString);
+
 	int32_t GetPhoneRegistCount()
 	{
 		return m_nPhoneRegistCount;

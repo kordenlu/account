@@ -51,6 +51,8 @@ public:
 	//卸载配置
 	virtual int32_t Uninit();
 
+	virtual int32_t Parser(char *pXMLString);
+
 	int32_t GetRedisServerInfo(RedisServerInfo arrRedisServerInfo[], int32_t nMaxCount);
 
 protected:
