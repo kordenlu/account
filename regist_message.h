@@ -16,6 +16,7 @@
 #include "logic/verifyauthcode_handler.h"
 #include "logic/registbaseinfo_handler.h"
 #include "logic/userlogin_handler.h"
+#include "logic/updatedevicetoken_handler.h"
 
 using namespace FRAME;
 
@@ -24,6 +25,7 @@ ON_PROC_PCH_PMH_PMB_PU8_I32(MSGID_REQUESTAUTH_REQ, ControlHead, MsgHeadCS, CRequ
 ON_PROC_PCH_PMH_PMB_PU8_I32(MSGID_VERIFYAUTHCODE_REQ, ControlHead, MsgHeadCS, CVerifyAuthCodeReq, CVerifyAuthCodeHandler, CVerifyAuthCodeHandler::VerifyAuthCode);
 ON_PROC_PCH_PMH_PMB_PU8_I32(MSGID_REGISTBASEINFO_REQ, ControlHead, MsgHeadCS, CRegistBaseInfoReq, CRegistBaseInfoHandler, CRegistBaseInfoHandler::RegistBaseInfo);
 ON_PROC_PCH_PMH_PMB_PU8_I32(MSGID_USERLOGIN_REQ, ControlHead, MsgHeadCS, CUserLoginReq, CUserLoginHandler, CUserLoginHandler::UserLogin);
+ON_PROC_PCH_PMH_PMB_PU8_I32(MSGID_UPDATEDEVICETOKEN_REQ, ControlHead, MsgHeadCS, CUpdateDeviceTokenReq, CUpdateDeviceTokenHandler, CUpdateDeviceTokenHandler::UpdateDeviceToken);
 MSGMAP_END(msgmap)
 
 #endif /* REGIST_MESSAGE_H_ */

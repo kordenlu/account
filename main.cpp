@@ -60,7 +60,7 @@ int32_t main()
 
 	while(true)
 	{
-		Delay(50);
+		Delay(50 * US_PER_SECOND);
 	}
 
 //	//创建网络事件处理器
