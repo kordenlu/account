@@ -8,7 +8,7 @@
 #ifndef SERVER_TYPEDEF_H_
 #define SERVER_TYPEDEF_H_
 
-#include "../common/common_typedef.h"
+#include "common/common_typedef.h"
 
 #define SERVER_NAME			"account"
 

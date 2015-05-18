@@ -8,12 +8,12 @@
 #ifndef REGISTBASEINFO_HANDLER_H_
 #define REGISTBASEINFO_HANDLER_H_
 
-#include "../../common/common_object.h"
-#include "../../frame/frame_impl.h"
-#include "../../frame/redis_session.h"
-#include "../../include/control_head.h"
-#include "../../include/account_msg.h"
-#include "../../include/msg_head.h"
+#include "common/common_object.h"
+#include "frame/frame_impl.h"
+#include "frame/redis_session.h"
+#include "include/control_head.h"
+#include "include/account_msg.h"
+#include "include/msg_head.h"
 #include <string>
 
 using namespace std;

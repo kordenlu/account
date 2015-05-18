@@ -6,18 +6,18 @@
  */
 
 #include "verifyauthcode_handler.h"
-#include "../../common/common_datetime.h"
-#include "../../common/common_api.h"
-#include "../../frame/frame.h"
-#include "../../frame/server_helper.h"
-#include "../../frame/redissession_bank.h"
-#include "../../logger/logger.h"
-#include "../../include/cachekey_define.h"
-#include "../../include/control_head.h"
-#include "../../include/typedef.h"
-#include "../config/string_config.h"
-#include "../server_typedef.h"
-#include "../bank/redis_bank.h"
+#include "common/common_datetime.h"
+#include "common/common_api.h"
+#include "frame/frame.h"
+#include "frame/server_helper.h"
+#include "frame/redissession_bank.h"
+#include "frame/cachekey_define.h"
+#include "logger/logger.h"
+#include "include/control_head.h"
+#include "include/typedef.h"
+#include "config/string_config.h"
+#include "server_typedef.h"
+#include "bank/redis_bank.h"
 #include <string.h>
 
 using namespace LOGGER;
@@ -51,12 +51,10 @@ int32_t CVerifyAuthCodeHandler::VerifyAuthCode(ICtlHead *pCtlHead, IMsgHead *pMs
 	pSessionData->m_stMsgHeadCS = *pMsgHeadCS;
 	pSessionData->m_stVerifyAuthCodeReq = *pVerifyAuthCodeReq;
 
-	RegistPhoneInfo *pConfigRegistPhoneInfo = (RegistPhoneInfo *)g_Frame.GetConfig(REGIST_PHONEINFO);
-
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRedisChannel = pRedisBank->GetRedisChannel(pConfigRegistPhoneInfo->string);
-	pRedisChannel->HMGet(pSession, (char *)(pVerifyAuthCodeReq->m_strPhone.c_str()), "%s %s", pConfigRegistPhoneInfo->auth_code,
-			pConfigRegistPhoneInfo->auth_code_expire_time);
+	CRedisChannel *pRedisChannel = pRedisBank->GetRedisChannel(RegistPhoneInfo::servername, pVerifyAuthCodeReq->m_strPhone.c_str());
+	pRedisChannel->HMGet(pSession, CServerHelper::MakeRedisKey(RegistPhoneInfo::keyname, pVerifyAuthCodeReq->m_strPhone.c_str()), "%s %s",
+			RegistPhoneInfo::auth_code, RegistPhoneInfo::auth_code_expire_time);
 
 	return 0;
 }
@@ -71,7 +69,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 	CStringConfig *pStringConfig = (CStringConfig *)g_Frame.GetConfig(CONFIG_STRING);
 
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(CLIENT_RESP);
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pUserSession->m_stCtlHead.m_nGateRedisAddress, pUserSession->m_stCtlHead.m_nGateRedisPort);
 	if(pRespChannel == NULL)
 	{
 		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_VERIFYAUTHCODE_RESP,
@@ -145,7 +143,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 		stVerifyAuthCodeResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stVerifyAuthCodeResp.m_nResult);
 
 		uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
-		pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
+		pRespChannel->RPush(NULL, CServerHelper::MakeRedisKey(ClientResp::keyname, pUserSession->m_stCtlHead.m_nGateID), (char *)arrRespBuf, nTotalSize);
 
 		g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, "send ");
 
@@ -156,8 +154,8 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, voi
 		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CVerifyAuthCodeHandler::OnSessionGetAccount));
 		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CVerifyAuthCodeHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
 
-		CRedisChannel *pAccountPoolChannl = pRedisBank->GetRedisChannel(ACCOUNT_POOL);
-		pAccountPoolChannl->LPop(pRedisSession);
+		CRedisChannel *pAccountPoolChannl = pRedisBank->GetRedisChannel(AccountPool::servername, 1);
+		pAccountPoolChannl->LPop(pRedisSession, AccountPool::keyname);
 	}
 
 	return 0;
@@ -173,7 +171,7 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 	CStringConfig *pStringConfig = (CStringConfig *)g_Frame.GetConfig(CONFIG_STRING);
 
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(CLIENT_RESP);
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pUserSession->m_stCtlHead.m_nGateRedisAddress, pUserSession->m_stCtlHead.m_nGateRedisPort);
 	if(pRespChannel == NULL)
 	{
 		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_VERIFYAUTHCODE_RESP,
@@ -235,43 +233,41 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 	}
 	else
 	{
-		UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
-
 		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
-		CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
-		pUserBaseInfoChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %d %s %s %s %d %s %s %s %ld %s %d %s %s s %s %s %ld",
-				pConfigUserBaseInfo->version, 1,
-				pConfigUserBaseInfo->accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
-				pConfigUserBaseInfo->uin, stVerifyAuthCodeResp.m_nUin,
-				pConfigUserBaseInfo->accountid, (char *)strAccountID.c_str(),
-				pConfigUserBaseInfo->createtime, nCurTime,
-				pConfigUserBaseInfo->phonetype, pUserSession->m_stVerifyAuthCodeReq.m_nPhoneType,
-				pConfigUserBaseInfo->osversion, pUserSession->m_stVerifyAuthCodeReq.m_strOSVer.c_str(),
-				pConfigUserBaseInfo->phonestyle, pUserSession->m_stVerifyAuthCodeReq.m_strPhoneStyle.c_str(),
-				pConfigUserBaseInfo->lastlogintime, nCurTime);
+		CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(UserBaseInfo::servername, stVerifyAuthCodeResp.m_nUin);
+		pUserBaseInfoChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserBaseInfo::keyname, stVerifyAuthCodeResp.m_nUin),
+				"%s %d %s %s %s %d %s %s %s %ld %s %d %s %s s %s %s %ld",
+				UserBaseInfo::version, 1,
+				UserBaseInfo::accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
+				UserBaseInfo::uin, stVerifyAuthCodeResp.m_nUin,
+				UserBaseInfo::accountid, (char *)strAccountID.c_str(),
+				UserBaseInfo::createtime, nCurTime,
+				UserBaseInfo::phonetype, pUserSession->m_stVerifyAuthCodeReq.m_nPhoneType,
+				UserBaseInfo::osversion, pUserSession->m_stVerifyAuthCodeReq.m_strOSVer.c_str(),
+				UserBaseInfo::phonestyle, pUserSession->m_stVerifyAuthCodeReq.m_strPhoneStyle.c_str(),
+				UserBaseInfo::lastlogintime, nCurTime);
 
-		AccountInfo *pConfigAccountInfo = (AccountInfo *)g_Frame.GetConfig(ACCOUNT_INFO);
-
-		CRedisChannel *pAccountNameChannel = pRedisBank->GetRedisChannel(pConfigAccountInfo->string);
-		pAccountNameChannel->HMSet(NULL, (char *)pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(), "%s %u %s %s %s %s %s %s",
-				pConfigAccountInfo->uin, stVerifyAuthCodeResp.m_nUin, pConfigAccountInfo->accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
-				pConfigAccountInfo->password, pUserSession->m_stVerifyAuthCodeReq.m_strPassword.c_str(), pConfigAccountInfo->accountid,
+		CRedisChannel *pAccountNameChannel = pRedisBank->GetRedisChannel(AccountInfo::servername, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str());
+		pAccountNameChannel->HMSet(NULL, CServerHelper::MakeRedisKey(AccountInfo::keyname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str()),
+				"%s %u %s %s %s %s %s %s",
+				AccountInfo::uin, stVerifyAuthCodeResp.m_nUin, AccountInfo::accountname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str(),
+				AccountInfo::password, pUserSession->m_stVerifyAuthCodeReq.m_strPassword.c_str(), AccountInfo::accountid,
 				strAccountID.c_str());
 
-		CRedisChannel *pAccountIDChannel = pRedisBank->GetRedisChannel(ACCOUNTID);
-		pAccountIDChannel->Set(NULL, (char *)strAccountID.c_str(), (char *)pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str());
+		CRedisChannel *pAccountIDChannel = pRedisBank->GetRedisChannel(AccountID::servername, strAccountID.c_str());
+		pAccountIDChannel->Set(NULL, CServerHelper::MakeRedisKey(AccountID::keyname, strAccountID.c_str()), pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str());
 
-		UserSessionInfo *pConfigUserSessionInfo = (UserSessionInfo *)g_Frame.GetConfig(USER_SESSIONINFO);
-
-		CRedisChannel *pUserSessionChannel = pRedisBank->GetRedisChannel(USER_SESSIONINFO);
-		pUserSessionChannel->HMSet(NULL, itoa(stVerifyAuthCodeResp.m_nUin), "%s %u %s %u %s %d %s %d %s %d", pConfigUserSessionInfo->sessionid,
-				pUserSession->m_stCtlHead.m_nSessionID, pConfigUserSessionInfo->clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
-				pConfigUserSessionInfo->clientport, pUserSession->m_stCtlHead.m_nClientPort, pConfigUserSessionInfo->gateid, pUserSession->m_stCtlHead.m_nGateID,
-				pConfigUserSessionInfo->phonetype, pUserSession->m_stCtlHead.m_nPhoneType);
+		CRedisChannel *pUserSessionChannel = pRedisBank->GetRedisChannel(UserSessionInfo::servername, stVerifyAuthCodeResp.m_nUin);
+		pUserSessionChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, stVerifyAuthCodeResp.m_nUin),
+				"%s %u %s %u %s %d %s %d %s %d", UserSessionInfo::sessionid, pUserSession->m_stCtlHead.m_nSessionID,
+				UserSessionInfo::clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
+				UserSessionInfo::clientport, pUserSession->m_stCtlHead.m_nClientPort,
+				UserSessionInfo::gateid, pUserSession->m_stCtlHead.m_nGateID,
+				UserSessionInfo::phonetype, pUserSession->m_stCtlHead.m_nPhoneType);
 	}
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, CServerHelper::MakeRedisKey(ClientResp::keyname, pUserSession->m_stCtlHead.m_nGateID), (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, "send ");
 
@@ -287,7 +283,7 @@ int32_t CVerifyAuthCodeHandler::OnRedisSessionTimeout(void *pTimerData)
 	UserSession *pUserSession = (UserSession *)pRedisSession->GetSessionData();
 
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(CLIENT_RESP);
+	CRedisChannel *pRespChannel = pRedisBank->GetRedisChannel(pUserSession->m_stCtlHead.m_nGateRedisAddress, pUserSession->m_stCtlHead.m_nGateRedisPort);
 	if(pRespChannel == NULL)
 	{
 		WRITE_WARN_LOG(SERVER_NAME, "it's not found redis channel by msgid!{msgid=%d, srcuin=%u, dstuin=%u}\n", MSGID_VERIFYAUTHCODE_RESP,
@@ -311,7 +307,7 @@ int32_t CVerifyAuthCodeHandler::OnRedisSessionTimeout(void *pTimerData)
 	stVerifyAuthCodeResp.m_strTips = pStringConfig->GetString(stMsgHeadCS.m_nMsgID, stVerifyAuthCodeResp.m_nResult);
 
 	uint16_t nTotalSize = CServerHelper::MakeMsg(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, arrRespBuf, sizeof(arrRespBuf));
-	pRespChannel->RPush(NULL, (char *)arrRespBuf, nTotalSize);
+	pRespChannel->RPush(NULL, CServerHelper::MakeRedisKey(ClientResp::keyname, pUserSession->m_stCtlHead.m_nGateID), (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(&pUserSession->m_stCtlHead, &stMsgHeadCS, &stVerifyAuthCodeResp, "send ");
 

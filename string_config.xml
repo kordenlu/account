@@ -20,5 +20,19 @@
 		<error result="3" string="帐号不存在"/>
 		<error result="255" string="服务器发生未知错误"/>
 	</msg>
+	<msg msgid="14">
+		<error result="1" string="手机号验证次数过多，请明日重新验证"/>
+		<error result="2" string="该手机号未注册"/>
+		<error result="255" string="服务器发生未知错误"/>
+	</msg>
+	<msg msgid="17">
+		<error result="1" string="验证码错误，请重新发送验证码"/>
+		<error result="2" string="验证码过期，请重新发送验证码"/>
+		<error result="255" string="服务器发生未知错误"/>
+	</msg>
+	<msg msgid="26">
+		<error result="1" string="用户名或密码错误"/>
+		<error result="255" string="服务器发生未知错误"/>
+	</msg>
 </server>
 

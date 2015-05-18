@@ -9,11 +9,10 @@
 #include <sys/types.h>
 #include <time.h>
 #include <stdlib.h>
-#include "../logger/logger.h"
-#include "../frame/frame_impl.h"
-#include "../frame/frame.h"
-#include "../frame/cmd_thread.h"
-#include "../include/cachekey_define.h"
+#include "logger/logger.h"
+#include "frame/frame_impl.h"
+#include "frame/frame.h"
+#include "frame/cmd_thread.h"
 #include "regist_message.h"
 #include "dispatch/msgparser_factory.h"
 #include "dispatch/msg_handler.h"
@@ -24,14 +23,6 @@
 
 using namespace LOGGER;
 using namespace FRAME;
-
-//注册到配置管理器
-REGIST_CONFIG(REGIST_PHONEINFO, RegistPhoneInfo)
-REGIST_CONFIG(REGIST_ADDRINFO, RegistAddrInfo)
-REGIST_CONFIG(USER_BASEINFO, UserBaseInfo)
-REGIST_CONFIG(USER_SESSIONINFO, UserSessionInfo)
-REGIST_CONFIG(ACCOUNT_INFO, AccountInfo)
-REGIST_CONFIG(USER_UNREADMSGLIST, UserUnreadMsgList)
 
 class Initer : public IInitFrame
 {
@@ -47,41 +38,40 @@ public:
 	}
 };
 
-int32_t main()
+int32_t main(int32_t argc, char* argv[])
 {
 	srand((int)time(0));
 
-	//启动日志线程
-	CLogger::Start();
+//	//启动日志线程
+//	CLogger::Start();
 
-//	CCmdThread *pCmdThread = new CCmdThread(1, 1, "127.0.0.1", 5178);
-//	pCmdThread->Start();
-	g_Frame.Start(SERVER_NAME, 1, 1, "127.0.0.1", 5178, new Initer());
-
-	while(true)
+	char *szCtlAddress = NULL;
+	//读取命令行参数
+	if (argc > 1)
 	{
-		Delay(50 * US_PER_SECOND);
+		if (0 == strcasecmp((const char*)argv[1], "-s"))
+		{
+			szCtlAddress = argv[2];
+		}
+		else
+		{
+			printf("./service -s ctlcenter's ip -w num & or ./service &");
+			exit(0);
+		}
+
+		if (0 == strcasecmp((const char*)argv[3], "-w"))
+		{
+			int32_t nWorkerCount = 0;
+			g_Frame.SetWorkerCount(atoi(argv[4]));
+		}
+		else
+		{
+			printf("./service -s ctlcenter's ip -w num & or ./service &");
+			exit(0);
+		}
 	}
 
-//	//创建网络事件处理器
-//	CNetHandler *pNetHandler = new CNetHandler();
-//	pNetHandler->CreateReactor();
-//
-//	g_Frame.AddRunner(pNetHandler);
-//
-//	if(g_Frame.Init(SERVER_NAME) != 0)
-//	{
-//		return 0;
-//	}
-//
-//	InitNetAndTimer(pNetHandler);
-//
-//	while(true)
-//	{
-//		g_Frame.Run();
-//	}
-//
-//	g_Frame.Uninit();
+	g_Frame.Start(SERVER_NAME, 1, szCtlAddress, 5178, new Initer());
 
 	return 0;
 }

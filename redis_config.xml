@@ -10,5 +10,6 @@
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="accountinfo:"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="accountid:"/>
 	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="user:unreadmsglist:"/>
+	<node server_id="1" server_address="127.0.0.1" server_port="6379" channel_key="resetpassword:"/>
 </redis>
 

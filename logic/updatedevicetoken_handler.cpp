@@ -6,18 +6,18 @@
  */
 
 #include "updatedevicetoken_handler.h"
-#include "../../common/common_datetime.h"
-#include "../../common/common_api.h"
-#include "../../frame/frame.h"
-#include "../../frame/server_helper.h"
-#include "../../frame/redissession_bank.h"
-#include "../../logger/logger.h"
-#include "../../include/cachekey_define.h"
-#include "../../include/control_head.h"
-#include "../../include/typedef.h"
-#include "../config/string_config.h"
-#include "../server_typedef.h"
-#include "../bank/redis_bank.h"
+#include "common/common_datetime.h"
+#include "common/common_api.h"
+#include "frame/frame.h"
+#include "frame/server_helper.h"
+#include "frame/redissession_bank.h"
+#include "frame/cachekey_define.h"
+#include "logger/logger.h"
+#include "include/control_head.h"
+#include "include/typedef.h"
+#include "config/string_config.h"
+#include "server_typedef.h"
+#include "bank/redis_bank.h"
 
 using namespace LOGGER;
 using namespace FRAME;
@@ -42,11 +42,10 @@ int32_t CUpdateDeviceTokenHandler::UpdateDeviceToken(ICtlHead *pCtlHead, IMsgHea
 		return 0;
 	}
 
-	UserBaseInfo *pConfigUserBaseInfo = (UserBaseInfo *)g_Frame.GetConfig(USER_BASEINFO);
-
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
-	CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(pConfigUserBaseInfo->string);
-	pUserBaseInfoChannel->HMSet(NULL, itoa(pMsgHeadCS->m_nSrcUin), "%s %s", pConfigUserBaseInfo->devicetoken, pUpdateDeviceTokenReq->m_strDeviceToken.c_str());
+	CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(UserBaseInfo::servername, pMsgHeadCS->m_nSrcUin);
+	pUserBaseInfoChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserBaseInfo::keyname, pMsgHeadCS->m_nSrcUin), "%s %s",
+			UserBaseInfo::devicetoken, pUpdateDeviceTokenReq->m_strDeviceToken.c_str());
 
 	return 0;
 }

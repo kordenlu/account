@@ -8,10 +8,9 @@
 #ifndef REDIS_CONFIG_H_
 #define REDIS_CONFIG_H_
 
-#include "../../frame/frame_impl.h"
-#include "../../frame/frame.h"
-#include "../../include/typedef.h"
-#include "../server_typedef.h"
+#include "frame/frame_impl.h"
+#include "frame/frame.h"
+#include "server_typedef.h"
 #include <string.h>
 
 using namespace FRAME;
@@ -22,14 +21,16 @@ struct RedisServerInfo
 {
 	RedisServerInfo()
 	{
+		memset(arrServerName, 0, sizeof(arrServerName));
 		nServerID = 0;
 		memset(arrServerAddress, 0, sizeof(arrServerAddress));
 		nPort = 0;
 		memset(arrChannelKey, 0, sizeof(arrChannelKey));
 		memset(arrChannelMode, 0, sizeof(arrChannelMode));
 	}
+	char			arrServerName[256];
 	int32_t 		nServerID;
-	char			arrServerAddress[enmMaxInternetAddrLen];
+	char			arrServerAddress[128];
 	uint16_t		nPort;
 	char			arrChannelKey[256];
 	char			arrChannelMode[256];

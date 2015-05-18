@@ -6,9 +6,9 @@
  */
 
 #include "redis_config.h"
-#include "../../tinyxml/tinyxml.h"
-#include "../../logger/logger.h"
-#include "../server_typedef.h"
+#include "tinyxml/tinyxml.h"
+#include "logger/logger.h"
+#include "server_typedef.h"
 
 using namespace LOGGER;
 
@@ -51,6 +51,18 @@ int32_t CRedisConfig::Parser(char *pXMLString)
 
 	while(pNode != NULL)
 	{
+		char arrServerName[64];
+		memset(arrServerName, 0, sizeof(arrServerName));
+
+		pszValue = pNode->Attribute("server_name");
+		if(NULL == pszValue)
+		{
+			WRITE_WARN_LOG(SERVER_NAME, "%s is not found server_name node!\n", m_szConfigFile);
+			return 1;
+		}
+
+		strcpy(arrServerName, pszValue);
+
 		int32_t nServerID = 0;
 		pszValue = pNode->Attribute("server_id", &nServerID);
 		if(NULL == pszValue)
@@ -83,28 +95,16 @@ int32_t CRedisConfig::Parser(char *pXMLString)
 		memset(arrChannelKey, 0, sizeof(arrChannelKey));
 
 		pszValue = pNode->Attribute("channel_key");
-		if(NULL == pszValue)
-		{
-			WRITE_WARN_LOG(SERVER_NAME, "%s is not found channel_key node!\n", m_szConfigFile);
-			return 1;
-		}
-
-		strcpy(arrChannelKey, pszValue);
-
-		char arrChannelMode[256];
-		memset(arrChannelMode, 0, sizeof(arrChannelMode));
-
-		pszValue = pNode->Attribute("channel_mode");
 		if(NULL != pszValue)
 		{
-			strcpy(arrChannelMode, pszValue);
+			strcpy(arrChannelKey, pszValue);
 		}
 
+		strcpy(m_arrRedisServerInfo[m_nRedisCount].arrServerName, arrServerName);
 		m_arrRedisServerInfo[m_nRedisCount].nServerID = nServerID;
 		strcpy(m_arrRedisServerInfo[m_nRedisCount].arrServerAddress, arrServerAddress);
 		m_arrRedisServerInfo[m_nRedisCount].nPort = nServerPort;
 		strcpy(m_arrRedisServerInfo[m_nRedisCount].arrChannelKey, arrChannelKey);
-		strcpy(m_arrRedisServerInfo[m_nRedisCount].arrChannelMode, arrChannelMode);
 		++m_nRedisCount;
 
 		pNode = pNode->NextSiblingElement();
