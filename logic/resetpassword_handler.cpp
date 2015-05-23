@@ -257,7 +257,7 @@ int32_t CResetPasswordHandler::OnSessionGetResetPasswordInfo(int32_t nResult, vo
 		CRegistConfig *pRegistConfig = (CRegistConfig *)g_Frame.GetConfig(CONFIG_REGIST);
 		char szSmsContent[2048];
 		int nContentLen = sprintf(szSmsContent, "mobile=%s&authcode=%ld&content=", pUserSession->m_stResetPasswordReq.m_strPhone.c_str(),
-				pUserSession->m_nAuthCode);
+				nAuthCode);
 		nContentLen += sprintf(szSmsContent + nContentLen, "%s", pRegistConfig->GetAuthCodeMessage());
 		CRedisChannel *pPushSms = pRedisBank->GetRedisChannel(PushSms::servername, pUserSession->m_stResetPasswordReq.m_strPhone.c_str());
 		pPushSms->RPush(NULL, CServerHelper::MakeRedisKey(PushSms::keyname), szSmsContent, nContentLen);
