@@ -48,10 +48,11 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 
 	CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
 	CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(UserBaseInfo::servername, pMsgHeadCS->m_nSrcUin);
-	pUserBaseInfoChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserBaseInfo::keyname, pMsgHeadCS->m_nSrcUin), "%s %s %s %s %s %s %s %d %s %d", UserBaseInfo::nickname,
-			pRegistBaseInfoReq->m_strNickName.c_str(), UserBaseInfo::headimage, pRegistBaseInfoReq->m_strHeadImageAddr.c_str(),
-			UserBaseInfo::birthday, pRegistBaseInfoReq->m_strBirthday.c_str(), UserBaseInfo::age, nAge, UserBaseInfo::gender,
-			pRegistBaseInfoReq->m_nGender);
+	pUserBaseInfoChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserBaseInfo::keyname, pMsgHeadCS->m_nSrcUin), "%s %s %s %s %s %s %s %d %s %d",
+			UserBaseInfo::nickname, pRegistBaseInfoReq->m_strNickName.c_str(),
+			UserBaseInfo::headimage, pRegistBaseInfoReq->m_strHeadImageAddr.c_str(),
+			UserBaseInfo::birthday, pRegistBaseInfoReq->m_strBirthday.c_str(),
+			UserBaseInfo::age, nAge, UserBaseInfo::gender, pRegistBaseInfoReq->m_nGender);
 
 	uint8_t arrRespBuf[MAX_MSG_SIZE];
 
