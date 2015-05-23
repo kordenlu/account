@@ -25,14 +25,10 @@ class CResetPasswordHandler : public CBaseObject
 	{
 		UserSession()
 		{
-			m_nAuthCode = 0;
-			m_nAuthCodeExpireTime = 0;
 		}
 		ControlHead			m_stCtlHead;
 		MsgHeadCS			m_stMsgHeadCS;
 		CResetPasswordReq	m_stResetPasswordReq;
-		uint32_t			m_nAuthCode;
-		int64_t				m_nAuthCodeExpireTime;
 	};
 public:
 
