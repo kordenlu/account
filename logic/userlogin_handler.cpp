@@ -400,11 +400,13 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 				UserSessionInfo::gateid, UserSessionInfo::gateredisaddress, UserSessionInfo::gateredisport);
 
 		pUserSessionChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
-				"%s %u %s %u %s %d %s %d %s %d", UserSessionInfo::sessionid, pUserSession->m_stCtlHead.m_nSessionID,
+				"%s %u %s %u %s %d %s %d %s %d %s %u %s %d", UserSessionInfo::sessionid, pUserSession->m_stCtlHead.m_nSessionID,
 				UserSessionInfo::clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
 				UserSessionInfo::clientport, pUserSession->m_stCtlHead.m_nClientPort,
 				UserSessionInfo::gateid, pUserSession->m_stCtlHead.m_nGateID,
-				UserSessionInfo::phonetype, pUserSession->m_stCtlHead.m_nPhoneType);
+				UserSessionInfo::phonetype, pUserSession->m_stCtlHead.m_nPhoneType,
+				UserSessionInfo::gateredisaddress, pUserSession->m_stCtlHead.m_nGateRedisAddress,
+				UserSessionInfo::gateredisport, pUserSession->m_stCtlHead.m_nGateRedisPort);
 
 		pUserSessionChannel->Expire(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
 				HEARTBEAT_INTERVAL * HEARTBEAT_MISS);
