@@ -219,6 +219,8 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 			}
 		}
 
+		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
+
 		CRedisChannel *pPhoneInfo = pRedisBank->GetRedisChannel(RegistPhoneInfo::servername, pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str());
 		if(nCurDate == nLastRegistDate)
 		{
@@ -231,9 +233,14 @@ int32_t CRequstAuthHandler::OnSessionGetRegistPhoneInfo(int32_t nResult, void *p
 					"%s %d %s %d %s %d",
 					RegistPhoneInfo::regist_count, 1, RegistPhoneInfo::last_regist_date, nCurDate,
 					RegistPhoneInfo::auth_code_expire_time, 0);
+
+			struct tm sttmLocalTime = {0};
+			localtime_r((time_t *)&nCurTime, &sttmLocalTime);
+			int32_t nPassedTime = ((int32_t)((sttmLocalTime.tm_hour * SECOND_PER_HOUR) + (sttmLocalTime.tm_min * SECOND_PER_MINUTE) + sttmLocalTime.tm_sec));
+			pPhoneInfo->Expire(NULL, CServerHelper::MakeRedisKey(RegistPhoneInfo::keyname, pUserSession->m_stAuthRegistPhoneReq.m_strPhone.c_str()),
+					(SECOND_PER_DAY - nPassedTime));
 		}
 
-		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
 		if(nCurTime > nAuthCodeExpireTime)
 		{
 			nAuthCode = Random(999999);
@@ -360,6 +367,13 @@ int32_t CRequstAuthHandler::OnSessionGetRegistAddrInfo(int32_t nResult, void *pR
 		{
 			pAddrInfo->HMSet(NULL, CServerHelper::MakeRedisKey(RegistAddrInfo::keyname, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress)),
 					"%s %d %s %d", RegistAddrInfo::regist_count, 1, RegistAddrInfo::last_regist_date, nCurDate);
+
+			int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
+			struct tm sttmLocalTime = {0};
+			localtime_r((time_t *)&nCurTime, &sttmLocalTime);
+			int32_t nPassedTime = ((int32_t)((sttmLocalTime.tm_hour * SECOND_PER_HOUR) + (sttmLocalTime.tm_min * SECOND_PER_MINUTE) + sttmLocalTime.tm_sec));
+			pAddrInfo->Expire(NULL, CServerHelper::MakeRedisKey(RegistAddrInfo::keyname, inet_ntoa_f(pUserSession->m_stCtlHead.m_nClientAddress)),
+					(SECOND_PER_DAY - nPassedTime));
 		}
 	}while(0);
 
