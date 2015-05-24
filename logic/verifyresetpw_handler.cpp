@@ -146,7 +146,7 @@ int32_t CVerifyResetPWHandler::OnSessionGetResetPasswordInfo(int32_t nResult, vo
 	{
 		CRedisChannel *pAccountInfoChannel = pRedisBank->GetRedisChannel(AccountInfo::servername,
 				pUserSession->m_stVerifyResetPWReq.m_strPhone.c_str());
-		pAccountInfoChannel->HMSet(NULL, CServerHelper::MakeRedisKey(AccountInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
+		pAccountInfoChannel->HMSet(NULL, CServerHelper::MakeRedisKey(AccountInfo::keyname, pUserSession->m_stVerifyResetPWReq.m_strPhone.c_str()),
 				"%s %s", AccountInfo::password, pUserSession->m_stVerifyResetPWReq.m_strPassword.c_str());
 	}
 
