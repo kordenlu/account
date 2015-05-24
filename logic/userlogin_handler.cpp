@@ -409,7 +409,7 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 				UserSessionInfo::gateredisport, pUserSession->m_stCtlHead.m_nGateRedisPort);
 
 		pUserSessionChannel->Expire(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
-				HEARTBEAT_INTERVAL * HEARTBEAT_MISS);
+				HEARTBEAT_INTERVAL * (HEARTBEAT_MISS + 1));
 
 		pUserSessionChannel->Exec(pRedisSession);
 	}
@@ -538,7 +538,7 @@ int32_t CUserLoginHandler::OnSessionGetUserSessionInfo(int32_t nResult, void *pR
 
 	CRedisChannel *pUnreadMsgChannel = pRedisBank->GetRedisChannel(UserUnreadMsgList::servername, pUserSession->m_stMsgHeadCS.m_nSrcUin);
 
-	pUnreadMsgChannel->ZCount(pRedisSession, CServerHelper::MakeRedisKey(UserUnreadMsgList::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin));
+	pUnreadMsgChannel->ZCard(pRedisSession, CServerHelper::MakeRedisKey(UserUnreadMsgList::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin));
 
 	CRedisChannel *pUserBaseChannel = pRedisBank->GetRedisChannel(UserBaseInfo::servername, pUserSession->m_stMsgHeadCS.m_nSrcUin);
 	pUserBaseChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserBaseInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
