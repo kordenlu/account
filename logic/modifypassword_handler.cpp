@@ -37,6 +37,14 @@ int32_t CModifyPasswordHandler::ModifyPassword(ICtlHead *pCtlHead, IMsgHead *pMs
 		return 0;
 	}
 
+	if((pControlHead->m_nUin == 0) || (pControlHead->m_nUin != pMsgHeadCS->m_nSrcUin))
+	{
+		CRedisBank *pRedisBank = (CRedisBank *)g_Frame.GetBank(BANK_REDIS);
+		CRedisChannel *pClientRespChannel = pRedisBank->GetRedisChannel(pControlHead->m_nGateRedisAddress, pControlHead->m_nGateRedisPort);
+
+		return CServerHelper::KickUser(pControlHead, pMsgHeadCS, pClientRespChannel, KickReason_NotLogined);
+	}
+
 	CModifyPasswordReq *pModifyPasswordReq = dynamic_cast<CModifyPasswordReq *>(pMsgBody);
 	if(pModifyPasswordReq == NULL)
 	{
