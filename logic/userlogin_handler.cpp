@@ -17,8 +17,9 @@
 #include "include/typedef.h"
 #include "config/server_config.h"
 #include "config/string_config.h"
-#include "server_typedef.h"
 #include "bank/redis_bank.h"
+#include "server_typedef.h"
+#include "server_util.h"
 
 using namespace LOGGER;
 using namespace FRAME;
@@ -387,6 +388,8 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 		stUserLoginResp.m_nFollowersCount = pUserSession->m_nFollowersCount;
 		stUserLoginResp.m_nFansCount = pUserSession->m_nFansCount;
 		stUserLoginResp.m_nLookMeCount = pUserSession->m_nLookMeCount;
+		stUserLoginResp.m_strTokenKey = CServerUtil::MakeFixedLengthRandomString(8);
+		stUserLoginResp.m_strDataKey = CServerUtil::MakeFixedLengthRandomString(8);
 
 		pRedisSession->SetHandleRedisReply(static_cast<RedisReply>(&CUserLoginHandler::OnSessionGetUserSessionInfo));
 		pRedisSession->SetTimerProc(static_cast<TimerProc>(&CUserLoginHandler::OnRedisSessionTimeout), 60 * MS_PER_SECOND);
@@ -400,13 +403,16 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 				UserSessionInfo::gateid, UserSessionInfo::gateredisaddress, UserSessionInfo::gateredisport);
 
 		pUserSessionChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
-				"%s %u %s %u %s %d %s %d %s %d %s %u %s %d", UserSessionInfo::sessionid, pUserSession->m_stCtlHead.m_nSessionID,
+				"%s %u %s %u %s %d %s %d %s %d %s %u %s %d %s %s %s %s",
+				UserSessionInfo::sessionid, pUserSession->m_stCtlHead.m_nSessionID,
 				UserSessionInfo::clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
 				UserSessionInfo::clientport, pUserSession->m_stCtlHead.m_nClientPort,
 				UserSessionInfo::gateid, pUserSession->m_stCtlHead.m_nGateID,
 				UserSessionInfo::phonetype, pUserSession->m_stCtlHead.m_nPhoneType,
 				UserSessionInfo::gateredisaddress, pUserSession->m_stCtlHead.m_nGateRedisAddress,
-				UserSessionInfo::gateredisport, pUserSession->m_stCtlHead.m_nGateRedisPort);
+				UserSessionInfo::gateredisport, pUserSession->m_stCtlHead.m_nGateRedisPort,
+				UserSessionInfo::tokenkey, stUserLoginResp.m_strTokenKey.c_str(),
+				UserSessionInfo::datakey, stUserLoginResp.m_strDataKey.c_str());
 
 		pUserSessionChannel->Expire(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
 				HEARTBEAT_INTERVAL * (HEARTBEAT_MISS + 1));
@@ -632,4 +638,3 @@ int32_t CUserLoginHandler::OnRedisSessionTimeout(void *pTimerData)
 	pRedisSessionBank->DestroySession(pRedisSession);
 	return 0;
 }
-

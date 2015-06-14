@@ -67,6 +67,7 @@ public:
 	int32_t OnSessionGetUnreadMsgCount(int32_t nResult, void *pReply, void *pSession);
 
 	int32_t OnRedisSessionTimeout(void *pTimerData);
+
 };
 
 
