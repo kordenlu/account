@@ -29,6 +29,7 @@ class CUserLoginHandler : public CBaseObject
 			m_nFollowersCount = 0;
 			m_nFansCount = 0;
 			m_nLookMeCount = 0;
+			m_bMakeKey = false;
 		}
 		uint32_t				m_nUin;
 		string				m_strAccountID;
@@ -38,6 +39,9 @@ class CUserLoginHandler : public CBaseObject
 		uint32_t			m_nFollowersCount;
 		uint32_t			m_nFansCount;
 		uint32_t			m_nLookMeCount;
+		bool				m_bMakeKey;
+		string				m_strTokenKey;
+		string				m_strDataKey;
 	};
 public:
 
@@ -59,6 +63,8 @@ public:
 	int32_t OnSessionGetAccountInfo(int32_t nResult, void *pReply, void *pSession);
 
 	int32_t OnSessionGetUserRelationInfo(int32_t nResult, void *pReply, void *pSession);
+
+	int32_t OnSessionGetUserSessionKey(int32_t nResult, void *pReply, void *pSession);
 
 	int32_t OnSessionGetUserBaseInfo(int32_t nResult, void *pReply, void *pSession);
 
