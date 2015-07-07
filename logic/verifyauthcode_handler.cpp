@@ -263,19 +263,25 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 
 		CRedisChannel *pUserSessionChannel = pRedisBank->GetRedisChannel(UserSessionInfo::servername, stVerifyAuthCodeResp.m_nUin);
 		pUserSessionChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, stVerifyAuthCodeResp.m_nUin),
-				"%s %u %s %u %s %d %s %d %s %d %s %u %s %d %s %s %s %s",
+				"%s %u %s %u %s %d %s %d %s %d %s %u %s %d",
 				UserSessionInfo::sessionid, pUserSession->m_stCtlHead.m_nSessionID,
 				UserSessionInfo::clientaddress, pUserSession->m_stCtlHead.m_nClientAddress,
 				UserSessionInfo::clientport, pUserSession->m_stCtlHead.m_nClientPort,
 				UserSessionInfo::gateid, pUserSession->m_stCtlHead.m_nGateID,
 				UserSessionInfo::phonetype, pUserSession->m_stCtlHead.m_nPhoneType,
 				UserSessionInfo::gateredisaddress, pUserSession->m_stCtlHead.m_nGateRedisAddress,
-				UserSessionInfo::gateredisport, pUserSession->m_stCtlHead.m_nGateRedisPort,
-				UserSessionInfo::tokenkey, stVerifyAuthCodeResp.m_strTokenKey.c_str(),
-				UserSessionInfo::datakey, stVerifyAuthCodeResp.m_strDataKey.c_str());
+				UserSessionInfo::gateredisport, pUserSession->m_stCtlHead.m_nGateRedisPort);
 
 		pUserSessionChannel->Expire(NULL, CServerHelper::MakeRedisKey(UserSessionInfo::keyname, stVerifyAuthCodeResp.m_nUin),
 				HEARTBEAT_INTERVAL * (HEARTBEAT_MISS + 1));
+
+		CRedisChannel *pUserSessionKeyChannel = pRedisBank->GetRedisChannel(UserSessionKey::servername, stVerifyAuthCodeResp.m_nUin);
+		pUserSessionKeyChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserSessionKey::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
+				"%s %s %s %s", UserSessionKey::tokenkey, stVerifyAuthCodeResp.m_strTokenKey.c_str(),
+				UserSessionKey::datakey, stVerifyAuthCodeResp.m_strDataKey.c_str());
+
+		pUserSessionKeyChannel->Expire(NULL, CServerHelper::MakeRedisKey(UserSessionKey::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
+				SECOND_PER_WEEK);
 
 		CRedisChannel *pRegistPhoneInfoChannel = pRedisBank->GetRedisChannel(RegistPhoneInfo::servername, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str());
 		pRegistPhoneInfoChannel->Del(NULL, CServerHelper::MakeRedisKey(RegistPhoneInfo::keyname, pUserSession->m_stVerifyAuthCodeReq.m_strPhone.c_str()));
