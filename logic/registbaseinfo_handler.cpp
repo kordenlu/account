@@ -78,6 +78,15 @@ int32_t CRegistBaseInfoHandler::RegistBaseInfo(ICtlHead *pCtlHead, IMsgHead *pMs
 	pRespChannel->RPush(NULL, CServerHelper::MakeRedisKey(ClientResp::keyname, pControlHead->m_nGateID), (char *)arrRespBuf, nTotalSize);
 
 	g_Frame.Dump(pCtlHead, &stMsgHeadCS, &stRegistBaseInfoResp, "send ");
+
+	CRedisChannel *pPushNotiChannel = pRedisBank->GetRedisChannel(PushNoti::servername, pMsgHeadCS->m_nSrcUin);
+	char szPushNoti[256];
+	int32_t nPushNotiLen = sprintf(szPushNoti, "regist:%u", pMsgHeadCS->m_nSrcUin);
+	pPushNotiChannel->RPush(NULL, CServerHelper::MakeRedisKey(PushNoti::keyname), szPushNoti, nPushNotiLen);
+
+	CRedisChannel *pFansUserChannel = pRedisBank->GetRedisChannel(UserFans::servername, pMsgHeadCS->m_nSrcUin);
+	pFansUserChannel->ZAdd(NULL, CServerHelper::MakeRedisKey(UserFans::keyname, pMsgHeadCS->m_nSrcUin), "%ld %u",
+			CDateTime::CurrentDateTime().Seconds(), 1000);
 	return 0;
 }
 
