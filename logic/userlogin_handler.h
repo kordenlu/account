@@ -42,6 +42,7 @@ class CUserLoginHandler : public CBaseObject
 		bool				m_bMakeKey;
 		string				m_strTokenKey;
 		string				m_strDataKey;
+		string				m_strRC4Key;
 	};
 public:
 
@@ -61,6 +62,8 @@ public:
 	int32_t UserLogin(ICtlHead *pCtlHead, IMsgHead *pMsgHead, IMsgBody *pMsgBody, uint8_t *pBuf, int32_t nBufSize);
 
 	int32_t OnSessionGetAccountInfo(int32_t nResult, void *pReply, void *pSession);
+
+	int32_t OnSessionGetUserStatus(int32_t nResult, void *pReply, void *pSession);
 
 	int32_t OnSessionGetUserRelationInfo(int32_t nResult, void *pReply, void *pSession);
 
