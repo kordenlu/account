@@ -236,6 +236,8 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 	{
 		stVerifyAuthCodeResp.m_strTokenKey = CServerUtil::MakeFixedLengthRandomString(8);
 		stVerifyAuthCodeResp.m_strDataKey = CServerUtil::MakeFixedLengthRandomString(8);
+		stVerifyAuthCodeResp.m_strRC4Key = CServerUtil::MakeFixedLengthRandomString(8);
+		stVerifyAuthCodeResp.m_nServerTime = (uint32_t)CDateTime::CurrentDateTime().Seconds();
 
 		int64_t nCurTime = CDateTime::CurrentDateTime().Seconds();
 		CRedisChannel *pUserBaseInfoChannel = pRedisBank->GetRedisChannel(UserBaseInfo::servername, stVerifyAuthCodeResp.m_nUin);
@@ -277,8 +279,9 @@ int32_t CVerifyAuthCodeHandler::OnSessionGetAccount(int32_t nResult, void *pRepl
 
 		CRedisChannel *pUserSessionKeyChannel = pRedisBank->GetRedisChannel(UserSessionKey::servername, stVerifyAuthCodeResp.m_nUin);
 		pUserSessionKeyChannel->HMSet(NULL, CServerHelper::MakeRedisKey(UserSessionKey::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
-				"%s %s %s %s", UserSessionKey::tokenkey, stVerifyAuthCodeResp.m_strTokenKey.c_str(),
-				UserSessionKey::datakey, stVerifyAuthCodeResp.m_strDataKey.c_str());
+				"%s %s %s %s %s %s", UserSessionKey::tokenkey, stVerifyAuthCodeResp.m_strTokenKey.c_str(),
+				UserSessionKey::datakey, stVerifyAuthCodeResp.m_strDataKey.c_str(),
+				UserSessionKey::rc4key, stVerifyAuthCodeResp.m_strRC4Key.c_str());
 
 		pUserSessionKeyChannel->Expire(NULL, CServerHelper::MakeRedisKey(UserSessionKey::keyname, pUserSession->m_stMsgHeadCS.m_nSrcUin),
 				SECOND_PER_WEEK);
