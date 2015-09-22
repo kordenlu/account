@@ -437,8 +437,8 @@ int32_t CUserLoginHandler::OnSessionGetUserSessionKey(int32_t nResult, void *pRe
 
 	CRedisChannel *pGetUserBaseInfoChannel = pRedisBank->GetRedisChannel(UserBaseInfo::servername, pUserSession->m_nUin);
 	pGetUserBaseInfoChannel->HMGet(pRedisSession, CServerHelper::MakeRedisKey(UserBaseInfo::keyname, pUserSession->m_nUin),
-			"%s %s %s %s %s %s %s", UserBaseInfo::nickname, UserBaseInfo::gender, UserBaseInfo::headimage, UserBaseInfo::version,
-			UserBaseInfo::createtopics_count, UserBaseInfo::jointopics_count, UserBaseInfo::followbusline_count);
+			"%s %s %s %s %s %s %s %s", UserBaseInfo::nickname, UserBaseInfo::gender, UserBaseInfo::headimage, UserBaseInfo::version,
+			UserBaseInfo::createtopics_count, UserBaseInfo::jointopics_count, UserBaseInfo::followbusline_count, UserBaseInfo::accounttype);
 
 	return 0;
 }
@@ -526,6 +526,16 @@ int32_t CUserLoginHandler::OnSessionGetUserBaseInfo(int32_t nResult, void *pRepl
 			if(pReplyElement->type != REDIS_REPLY_NIL)
 			{
 				stUserLoginResp.m_nFollowBuslineCount = atoi(pReplyElement->str);
+			}
+
+			pReplyElement = pRedisReply->element[nIndex++];
+			if(pReplyElement->type != REDIS_REPLY_NIL)
+			{
+				stUserLoginResp.m_nAccountType = atoi(pReplyElement->str);
+			}
+			else
+			{
+				stUserLoginResp.m_nAccountType = enmAccountType_Normal;
 			}
 		}
 		else
